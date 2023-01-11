@@ -1,0 +1,16 @@
+<template>
+  <router-view />
+</template>
+
+<script lang="ts">
+import { useQuasar } from 'quasar'
+
+export default {
+  setup () {
+    const $q = useQuasar()
+
+    // calling here; equivalent to when component is created
+    $q.dark.set(true)
+  }
+}
+</script>
