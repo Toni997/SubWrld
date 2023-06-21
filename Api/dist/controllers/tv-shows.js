@@ -12,20 +12,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.popularTVShows = exports.searchTVShows = void 0;
+exports.getTVShowDetails = exports.popularTVShows = exports.searchTVShows = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
-const maxNumberOfResults = 10;
+const limitNumberOfResults = 10;
 const addGenreNamesToShowsArray = (showsArray) => __awaiter(void 0, void 0, void 0, function* () {
     const genresResponse = yield axios_1.default.get(tmdb_api_1.genresUrl);
     const genres = genresResponse.data.genres;
     const genresObject = genres.reduce((a, v) => (Object.assign(Object.assign({}, a), { [v.id]: v.name })), {});
     showsArray.forEach((show) => {
         const genreNames = show.genre_ids.map((id) => genresObject[id]);
-        console.log(genreNames);
         show.genre_names = genreNames;
-        console.log(show);
     });
 });
 // @desc Search TV Shows that include keyword
@@ -41,7 +39,7 @@ const searchTVShows = (0, express_async_handler_1.default)((req, res) => __await
         const url = (0, tmdb_api_1.getSearchTVShowUrl)(keyword);
         const showsResponse = yield axios_1.default.get(url);
         let shows = showsResponse.data.results;
-        shows = shows.slice(0, maxNumberOfResults);
+        shows = shows.slice(0, limitNumberOfResults);
         yield addGenreNamesToShowsArray(shows);
         res.json(shows);
     }
@@ -50,14 +48,14 @@ const searchTVShows = (0, express_async_handler_1.default)((req, res) => __await
     }
 }));
 exports.searchTVShows = searchTVShows;
-// @desc SGet popular TV shows
+// @desc Get popular TV shows
 // @route GET /tv-shows/popular
 // @access Public
 const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const showsResponse = yield axios_1.default.get(tmdb_api_1.popularTVShowsUrl);
         let shows = showsResponse.data.results;
-        shows = shows.slice(0, maxNumberOfResults);
+        shows = shows.slice(0, limitNumberOfResults);
         yield addGenreNamesToShowsArray(shows);
         res.json(shows);
     }
@@ -66,3 +64,23 @@ const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awai
     }
 }));
 exports.popularTVShows = popularTVShows;
+// @desc Get TV show details
+// @route GET /tv-shows/:tvShowId
+// @access Public
+const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { tvShowId } = req.params;
+    try {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(tvShowId));
+        const tvShow = response.data;
+        for (const season of tvShow.seasons) {
+            const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowSeasonDetailsUrl)(tvShowId, season.season_number));
+            const tvShowSeason = response.data;
+            season.episodes = tvShowSeason.episodes;
+        }
+        res.json(tvShow);
+    }
+    catch (error) {
+        throw new Error(error.message || 'Error with TMBD API');
+    }
+}));
+exports.getTVShowDetails = getTVShowDetails;

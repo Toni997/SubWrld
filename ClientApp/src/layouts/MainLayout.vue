@@ -58,6 +58,7 @@
 import { ref } from 'vue'
 import HelloMessage from '../components/HelloMessage.vue'
 import { useAuthStore } from '../stores/auth-store'
+import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 
 export default {
   components: { HelloMessage },
@@ -65,6 +66,7 @@ export default {
     const authStore = useAuthStore()
     const leftDrawerOpen = ref(false)
     const rightDrawerOpen = ref(false)
+    polyfillCountryFlagEmojis()
 
     const logoutClick = async () => authStore.logout()
 

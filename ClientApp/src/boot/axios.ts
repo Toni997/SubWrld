@@ -6,6 +6,7 @@ export class ApiEndpoints {
   static signupPath = '/users/signup'
   static getPopularTVShowsPath = '/tv-shows/popular'
   static searchTVShowsPath = '/tv-shows/search?keyword='
+  static getTVShowDetailsPath = (tvShowId: string) => `/tv-shows/${tvShowId}`
 }
 
 declare module '@vue/runtime-core' {

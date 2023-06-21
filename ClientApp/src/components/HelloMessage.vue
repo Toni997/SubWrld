@@ -2,7 +2,10 @@
   <q-item>
     <q-item-section>
       <q-item-label
-        >Hello, {{ authStore.userInfo?.username || 'Guest' }}</q-item-label
+        >Hello,
+        <strong>{{
+          authStore.userInfo?.username || 'Guest'
+        }}</strong></q-item-label
       >
     </q-item-section>
   </q-item>

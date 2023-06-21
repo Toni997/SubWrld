@@ -6,6 +6,7 @@ import SignUpPage from '../pages/SignUpPage.vue'
 import IndexPage from '../pages/IndexPage.vue'
 import TVShowsPage from '../pages/TVShowsPage.vue'
 import { useAuthStore } from 'src/stores/auth-store'
+import TVShowDetailsPageVue from 'src/pages/TVShowDetailsPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -35,7 +36,19 @@ const routes: RouteRecordRaw[] = [
           next()
         },
       },
-      { path: '/tv-shows', component: TVShowsPage },
+      {
+        path: '/tv-shows',
+        children: [
+          {
+            path: '',
+            component: TVShowsPage,
+          },
+          {
+            path: ':tvShowId',
+            component: TVShowDetailsPageVue,
+          },
+        ],
+      },
     ],
   },
 

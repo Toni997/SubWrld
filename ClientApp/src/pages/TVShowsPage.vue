@@ -35,23 +35,26 @@
         >
           <div class="q-pa-md">
             <q-card class="q-pa-none">
-              <q-tooltip>
-                {{ truncate(tvShow.overview, 100) || 'No overview to display' }}
-              </q-tooltip>
               <router-link :to="`/tv-shows/${tvShow.id}`">
                 <q-img
                   :src="getImageUrl(tvShow.poster_path)"
                   :alt="tvShow.name"
-                  class="tv-show-poster tv-show-hover cursor-pointer"
-                ></q-img
-              ></router-link>
+                  class="tv-show-poster cursor-pointer"
+                >
+                  <div class="tv-show-overview">
+                    {{
+                      truncate(tvShow.overview, 300) || 'No overview to display'
+                    }}
+                  </div>
+                </q-img>
+              </router-link>
               <q-card-section class="tv-show-info">
                 <router-link
                   :to="`/tv-shows/${tvShow.id}`"
                   style="text-decoration: none; color: inherit"
-                  class="text-h6 cursor-pointer tv-show-hover"
-                  >{{ tvShow.name }}</router-link
-                >
+                  class="text-h6 cursor-pointer tv-show-title"
+                  >{{ tvShow.name }}
+                </router-link>
                 <div class="text-body1">Aired: {{ tvShow.first_air_date }}</div>
                 <div class="text-body1">
                   {{ tvShow.genre_names.join(' | ') }}
@@ -63,8 +66,8 @@
                     color="orange"
                     icon-half="star_half"
                     readonly
+                    max="10"
                   />
-                  ({{ tvShow.vote_count }} votes)
                 </div>
               </q-card-section>
             </q-card>
@@ -77,17 +80,17 @@
 
 <script lang="ts">
 import { ref, onMounted, watch, Ref } from 'vue'
-import { ITVShowInfo } from '../components/models'
+import { ITVShowBase } from '../interfaces/tv-show'
 import { tmdbImageBaseUrl } from '../config/tmdbConfig'
 import { api, ApiEndpoints } from '../boot/axios'
 import truncate from 'truncate'
 
 export default {
   setup() {
-    const popularTvShows: Ref<ITVShowInfo[]> = ref([])
+    const popularTVShows: Ref<ITVShowBase[]> = ref([])
     const error: Ref<string> = ref('')
     const isLoading: Ref<boolean> = ref(false)
-    const searchedTVShows: Ref<ITVShowInfo[]> = ref([])
+    const searchedTVShows: Ref<ITVShowBase[]> = ref([])
     const searchKeyword: Ref<string> = ref('')
 
     onMounted(async () => await loadData(null))
@@ -105,7 +108,7 @@ export default {
           ApiEndpoints.searchTVShowsPath + newValue
         )
         searchedTVShows.value = data
-        if (searchedTVShows.value.length === 0) error.value = 'Nothing found'
+        if (searchedTVShows.value.length < 1) error.value = 'Nothing found'
       } catch (err) {
         error.value = 'Failed to fetch.'
       } finally {
@@ -117,7 +120,7 @@ export default {
       isLoading.value = true
       try {
         const { data } = await api.get(ApiEndpoints.getPopularTVShowsPath)
-        popularTvShows.value = data
+        popularTVShows.value = data
       } catch (err) {
         error.value = 'Failed to fetch.'
       } finally {
@@ -130,39 +133,58 @@ export default {
     const getImageUrl = (relativePath: string) =>
       tmdbImageBaseUrl + relativePath
 
+    const divideRatingByTwo = (actualRating: number) => actualRating / 2
+
     const getTVShows = () =>
       searchedTVShows.value.length > 0
         ? searchedTVShows.value
-        : popularTvShows.value
+        : popularTVShows.value
 
     return {
-      tvShows: popularTvShows,
+      searchedTVShows,
       error,
       getImageUrl,
       truncate,
       isLoading,
       loadData,
       searchKeyword,
-      searchedTVShows,
       getTVShows,
+      divideRatingByTwo,
     }
   },
 }
 </script>
 
-<style>
+<style lang="scss">
 .tv-show-poster {
   width: 100%;
-  height: 300px;
+  min-height: 300px;
   object-fit: cover;
   border-radius: 5px;
 }
 
-.tv-show-hover {
-  transition-duration: 0.3s;
+.tv-show-hover,
+.tv-show-overview,
+.tv-show-title,
+.tv-show-poster img {
+  transition: 0.3s;
 }
 
-.tv-show-hover:hover {
-  opacity: 0.5;
+.tv-show-overview {
+  opacity: 0;
+}
+
+.tv-show-poster:hover {
+  .tv-show-overview {
+    opacity: 1;
+  }
+
+  img {
+    filter: blur(8px);
+  }
+}
+
+.tv-show-title:hover {
+  opacity: 0.7;
 }
 </style>

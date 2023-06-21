@@ -4,6 +4,7 @@ export interface ITVShowBase {
   original_name: string
   poster_path: string
   genres: number[]
+  genre_names: string[]
   overview: string
   first_air_date: string
   vote_average: number
@@ -24,6 +25,7 @@ export interface ITVShowDetails extends Omit<ITVShowBase, 'genres'> {
   status: string
   backdrop_path: string
   genres: ITVShowGenre[]
+  origin_country: string[]
 }
 
 export interface ITVShowGenre {
@@ -58,6 +60,7 @@ export interface ITVShowSeason {
 }
 
 export interface ITVShowEpisode {
+  id: number
   air_date: string
   season_number: number
   episode_number: number

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { api, ApiEndpoints } from '../boot/axios'
-import { AuthState } from 'src/components/models'
+import { AuthState } from 'src/interfaces/user'
 
 export const useAuthStore = defineStore({
   id: 'auth',
@@ -74,6 +74,9 @@ export const useAuthStore = defineStore({
       this.userInfo = null
       localStorage.removeItem('token')
       this.router.push('/login')
+    },
+    isLoggedIn() {
+      return !!this.userInfo
     },
   },
 })

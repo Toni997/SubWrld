@@ -5,9 +5,16 @@ import {
   genresUrl,
   getSearchTVShowUrl,
   popularTVShowsUrl,
+  getTVShowDetailsUrl,
+  getTVShowSeasonDetailsUrl,
 } from '../utils/tmdb-api'
+import {
+  ITVShowDetails,
+  ITVShowEpisode,
+  ITVShowSeason,
+} from '../interfaces/tv-shows'
 
-const maxNumberOfResults = 10
+const limitNumberOfResults = 10
 
 const addGenreNamesToShowsArray = async (showsArray: []) => {
   const genresResponse: any = await axios.get(genresUrl)
@@ -22,9 +29,7 @@ const addGenreNamesToShowsArray = async (showsArray: []) => {
 
   showsArray.forEach((show: any) => {
     const genreNames = show.genre_ids.map((id: number) => genresObject[id])
-    console.log(genreNames)
     show.genre_names = genreNames
-    console.log(show)
   })
 }
 
@@ -42,7 +47,7 @@ const searchTVShows = asyncHandler(async (req: Request, res: Response) => {
     const showsResponse: any = await axios.get(url)
     let shows: [] = showsResponse.data.results
 
-    shows = shows.slice(0, maxNumberOfResults) as []
+    shows = shows.slice(0, limitNumberOfResults) as []
     await addGenreNamesToShowsArray(shows)
 
     res.json(shows)
@@ -51,14 +56,14 @@ const searchTVShows = asyncHandler(async (req: Request, res: Response) => {
   }
 })
 
-// @desc SGet popular TV shows
+// @desc Get popular TV shows
 // @route GET /tv-shows/popular
 // @access Public
 const popularTVShows = asyncHandler(async (req: Request, res: Response) => {
   try {
     const showsResponse: any = await axios.get(popularTVShowsUrl)
     let shows: [] = showsResponse.data.results
-    shows = shows.slice(0, maxNumberOfResults) as []
+    shows = shows.slice(0, limitNumberOfResults) as []
     await addGenreNamesToShowsArray(shows)
 
     res.json(shows)
@@ -67,4 +72,25 @@ const popularTVShows = asyncHandler(async (req: Request, res: Response) => {
   }
 })
 
-export { searchTVShows, popularTVShows }
+// @desc Get TV show details
+// @route GET /tv-shows/:tvShowId
+// @access Public
+const getTVShowDetails = asyncHandler(async (req: Request, res: Response) => {
+  const { tvShowId } = req.params
+  try {
+    const response: any = await axios.get(getTVShowDetailsUrl(tvShowId))
+    const tvShow: ITVShowDetails = response.data
+    for (const season of tvShow.seasons) {
+      const response: any = await axios.get(
+        getTVShowSeasonDetailsUrl(tvShowId, season.season_number)
+      )
+      const tvShowSeason: ITVShowSeason = response.data
+      season.episodes = tvShowSeason.episodes
+    }
+    res.json(tvShow)
+  } catch (error: any) {
+    throw new Error(error.message || 'Error with TMBD API')
+  }
+})
+
+export { searchTVShows, popularTVShows, getTVShowDetails }
