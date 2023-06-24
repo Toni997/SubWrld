@@ -1,9 +1,9 @@
 <template>
   <div class="q-pa-md">
     <q-pull-to-refresh
-      @refresh="loadData"
-      color="orange-2"
-      bg-color="black"
+      @refresh="refresh"
+      color="primary"
+      bg-color="white"
       icon="autorenew"
     >
       <q-input
@@ -46,6 +46,13 @@
                       truncate(tvShow.overview, 300) || 'No overview to display'
                     }}
                   </div>
+                  <template v-slot:error>
+                    <div
+                      class="absolute-full flex flex-center bg-grey text-yellow"
+                    >
+                      Couldn't load poster
+                    </div>
+                  </template>
                 </q-img>
               </router-link>
               <q-card-section class="tv-show-info">
@@ -55,7 +62,9 @@
                   class="text-h6 cursor-pointer tv-show-title"
                   >{{ tvShow.name }}
                 </router-link>
-                <div class="text-body1">Aired: {{ tvShow.first_air_date }}</div>
+                <div class="text-body1">
+                  Air Date: {{ tvShow.first_air_date || 'Unknown' }}
+                </div>
                 <div class="text-body1">
                   {{ tvShow.genre_names.join(' | ') }}
                 </div>
@@ -93,7 +102,7 @@ export default {
     const searchedTVShows: Ref<ITVShowBase[]> = ref([])
     const searchKeyword: Ref<string> = ref('')
 
-    onMounted(async () => await loadData(null))
+    onMounted(async () => await loadData())
 
     watch(searchKeyword, async (newValue, oldValue) => {
       error.value = ''
@@ -116,7 +125,12 @@ export default {
       }
     })
 
-    const loadData = async (done: any) => {
+    const refresh = async (done: any) => {
+      await loadData()
+      done()
+    }
+
+    const loadData = async () => {
       isLoading.value = true
       try {
         const { data } = await api.get(ApiEndpoints.getPopularTVShowsPath)
@@ -126,8 +140,6 @@ export default {
       } finally {
         isLoading.value = false
       }
-
-      if (done) done()
     }
 
     const getImageUrl = (relativePath: string) =>
@@ -146,7 +158,7 @@ export default {
       getImageUrl,
       truncate,
       isLoading,
-      loadData,
+      refresh,
       searchKeyword,
       getTVShows,
       divideRatingByTwo,

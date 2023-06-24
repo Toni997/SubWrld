@@ -5,21 +5,20 @@ import { IAuthUserRequest } from '../interfaces/request'
 
 const authenticate = asyncHandler(async (req: IAuthUserRequest, res, next) => {
   let token
-
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
       token = req.headers.authorization.split(' ')[1]
-
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET as jwt.Secret
       ) as JwtPayload
 
-      req.user = (await User.findById(decoded.id).select('-password')) as IUser
-
+      req.user = (await User.findById(decoded._id).select(
+        '-password -watchlist -watchedEpisodes'
+      )) as IUser
       next()
     } catch (error) {
       console.error(error)
@@ -34,4 +33,29 @@ const authenticate = asyncHandler(async (req: IAuthUserRequest, res, next) => {
   }
 })
 
-export { authenticate }
+const passUserToRequest = asyncHandler(
+  async (req: IAuthUserRequest, res, next) => {
+    let token
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      try {
+        token = req.headers.authorization.split(' ')[1]
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET as jwt.Secret
+        ) as JwtPayload
+
+        req.user = (await User.findById(decoded._id).select(
+          '-password -watchlist -watchedEpisodes'
+        )) as IUser
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    next()
+  }
+)
+
+export { authenticate, passUserToRequest }

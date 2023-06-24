@@ -18,6 +18,8 @@ const userSchema = new mongoose_1.Schema({
     username: {
         type: String,
         required: true,
+        index: true,
+        unique: true,
         validate: {
             validator: (v) => {
                 const re = /^(?=.{5,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$/;
@@ -29,6 +31,7 @@ const userSchema = new mongoose_1.Schema({
     email: {
         type: String,
         required: true,
+        index: true,
         unique: true,
         validate: {
             validator: (v) => {
@@ -66,6 +69,4 @@ userSchema.pre('save', function (next) {
     });
 });
 const User = (0, mongoose_1.model)('User', userSchema);
-User.collection.createIndex({ username: 1 }, { unique: true });
-User.collection.createIndex({ email: 1 }, { unique: true });
 exports.default = User;

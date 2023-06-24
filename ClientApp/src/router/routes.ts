@@ -7,6 +7,7 @@ import IndexPage from '../pages/IndexPage.vue'
 import TVShowsPage from '../pages/TVShowsPage.vue'
 import { useAuthStore } from 'src/stores/auth-store'
 import TVShowDetailsPageVue from 'src/pages/TVShowDetailsPage.vue'
+import WatchlistPage from 'src/pages/WatchlistPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -46,6 +47,10 @@ const routes: RouteRecordRaw[] = [
           {
             path: ':tvShowId',
             component: TVShowDetailsPageVue,
+          },
+          {
+            path: '/watchlist',
+            component: WatchlistPage,
           },
         ],
       },

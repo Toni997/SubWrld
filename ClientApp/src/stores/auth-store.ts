@@ -28,7 +28,7 @@ export const useAuthStore = defineStore({
 
         this.router.push('/')
       } catch (error: any) {
-        throw new Error('Wrong credentials')
+        throw new Error(error.response ? 'Wrong credentials' : 'Server error')
       } finally {
         this.isLoading = false
       }

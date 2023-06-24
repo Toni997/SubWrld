@@ -24,6 +24,8 @@ export interface ITVShowDetails extends Omit<ITVShowBase, 'genres'> {
   status: string
   backdrop_path: string
   genres: ITVShowGenre[]
+  is_watchlisted_by_user: boolean
+  next_episode_to_air: ITVShowEpisode
 }
 
 export interface ITVShowGenre {
@@ -58,6 +60,7 @@ export interface ITVShowSeason {
 }
 
 export interface ITVShowEpisode {
+  id: number
   air_date: string
   season_number: number
   episode_number: number
@@ -67,10 +70,21 @@ export interface ITVShowEpisode {
   still_path: string
   vote_average: number
   vote_count: number
+  marked_as_watched: boolean
 }
 
 export interface ITVShowSpokenLanguage {
   english_name: string
   iso_639_1: string
   name: string
+}
+
+export interface IMarkWatched {
+  tvShowId: number
+  watched: IUpdateWatchedEpisodes[]
+}
+
+export interface IUpdateWatchedEpisodes {
+  season: number
+  episodes: number[] | number | null
 }

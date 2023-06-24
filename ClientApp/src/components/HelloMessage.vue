@@ -1,7 +1,7 @@
 <template>
   <q-item>
     <q-item-section>
-      <q-item-label
+      <q-item-label class="text-body1"
         >Hello,
         <strong>{{
           authStore.userInfo?.username || 'Guest'

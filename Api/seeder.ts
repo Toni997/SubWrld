@@ -1,7 +1,9 @@
 import dotenv from 'dotenv'
 import users from './seed/users'
 import User from './models/user'
+import Watchlist from './models/watchlist'
 import connectDB from './config/mongo'
+import WatchedEpisode from './models/watchedEpisodes'
 
 dotenv.config()
 
@@ -10,6 +12,8 @@ connectDB()
 const importData = async () => {
   try {
     await User.deleteMany()
+    await Watchlist.deleteMany()
+    await WatchedEpisode.deleteMany()
 
     await User.insertMany(users)
 
@@ -24,6 +28,8 @@ const importData = async () => {
 const destroyData = async () => {
   try {
     await User.deleteMany()
+    await Watchlist.deleteMany()
+    await WatchedEpisode.deleteMany()
 
     console.log('Data destroyed!')
     process.exit()

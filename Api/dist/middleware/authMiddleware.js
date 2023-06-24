@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticate = void 0;
+exports.passUserToRequest = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const user_1 = __importDefault(require("../models/user"));
@@ -23,7 +23,7 @@ const authenticate = (0, express_async_handler_1.default)((req, res, next) => __
         try {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-            req.user = (yield user_1.default.findById(decoded.id).select('-password'));
+            req.user = (yield user_1.default.findById(decoded._id).select('-password -watchlist -watchedEpisodes'));
             next();
         }
         catch (error) {
@@ -38,3 +38,19 @@ const authenticate = (0, express_async_handler_1.default)((req, res, next) => __
     }
 }));
 exports.authenticate = authenticate;
+const passUserToRequest = (0, express_async_handler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    let token;
+    if (req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer')) {
+        try {
+            token = req.headers.authorization.split(' ')[1];
+            const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+            req.user = (yield user_1.default.findById(decoded._id).select('-password -watchlist -watchedEpisodes'));
+        }
+        catch (error) {
+            console.error(error);
+        }
+    }
+    next();
+}));
+exports.passUserToRequest = passUserToRequest;

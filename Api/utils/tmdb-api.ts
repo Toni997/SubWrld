@@ -9,7 +9,16 @@ export const getSearchTVShowUrl = (keyword: string) =>
 
 export const genresUrl = `${baseUrl}/genre/tv/list?api_key=${TMBD_API_KEY}&language=en-US`
 export const popularTVShowsUrl = `${baseUrl}/trending/tv/week?api_key=${TMBD_API_KEY}&language=en-US`
-export const getTVShowDetailsUrl = (tvShowId: string) =>
+export const getTVShowDetailsUrl = (tvShowId: number | string) =>
   `${baseUrl}/tv/${tvShowId}?api_key=${TMBD_API_KEY}&language=en-US`
-export const getTVShowSeasonDetailsUrl = (tvShowId: string, season: number) =>
+export const getTVShowSeasonDetailsUrl = (
+  tvShowId: string | number,
+  season: string | number
+) =>
   `${baseUrl}/tv/${tvShowId}/season/${season}?api_key=${TMBD_API_KEY}&language=en-US`
+export const getTVShowEpisodeDetailsUrl = (
+  tvShowId: string | number,
+  season: string | number,
+  episode: string | number
+) =>
+  `${baseUrl}/tv/${tvShowId}/season/${season}/episode/${episode}?api_key=${TMBD_API_KEY}&language=en-US`

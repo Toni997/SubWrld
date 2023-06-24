@@ -15,12 +15,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 const users_1 = __importDefault(require("./seed/users"));
 const user_1 = __importDefault(require("./models/user"));
+const watchlist_1 = __importDefault(require("./models/watchlist"));
 const mongo_1 = __importDefault(require("./config/mongo"));
+const watchedEpisodes_1 = __importDefault(require("./models/watchedEpisodes"));
 dotenv_1.default.config();
 (0, mongo_1.default)();
 const importData = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield user_1.default.deleteMany();
+        yield watchlist_1.default.deleteMany();
+        yield watchedEpisodes_1.default.deleteMany();
         yield user_1.default.insertMany(users_1.default);
         console.log('Data imported');
         process.exit();
@@ -33,6 +37,8 @@ const importData = () => __awaiter(void 0, void 0, void 0, function* () {
 const destroyData = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield user_1.default.deleteMany();
+        yield watchlist_1.default.deleteMany();
+        yield watchedEpisodes_1.default.deleteMany();
         console.log('Data destroyed!');
         process.exit();
     }

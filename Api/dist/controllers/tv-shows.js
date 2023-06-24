@@ -12,10 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTVShowDetails = exports.popularTVShows = exports.searchTVShows = void 0;
+exports.getTVShowSeasonDetails = exports.getTVShowDetails = exports.popularTVShows = exports.searchTVShows = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
+const watchedEpisodes_1 = __importDefault(require("../models/watchedEpisodes"));
+const watchlist_1 = __importDefault(require("../models/watchlist"));
 const limitNumberOfResults = 10;
 const addGenreNamesToShowsArray = (showsArray) => __awaiter(void 0, void 0, void 0, function* () {
     const genresResponse = yield axios_1.default.get(tmdb_api_1.genresUrl);
@@ -27,7 +29,7 @@ const addGenreNamesToShowsArray = (showsArray) => __awaiter(void 0, void 0, void
     });
 });
 // @desc Search TV Shows that include keyword
-// @route GET /tv-shows/search?keword=
+// @route GET /tv-shows/search?keword=<keyword>
 // @access Public
 const searchTVShows = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -36,9 +38,8 @@ const searchTVShows = (0, express_async_handler_1.default)((req, res) => __await
         throw new Error('Search keyword should be at least 1 character long');
     }
     try {
-        const url = (0, tmdb_api_1.getSearchTVShowUrl)(keyword);
-        const showsResponse = yield axios_1.default.get(url);
-        let shows = showsResponse.data.results;
+        const response = yield axios_1.default.get((0, tmdb_api_1.getSearchTVShowUrl)(keyword));
+        let shows = response.data.results;
         shows = shows.slice(0, limitNumberOfResults);
         yield addGenreNamesToShowsArray(shows);
         res.json(shows);
@@ -53,8 +54,8 @@ exports.searchTVShows = searchTVShows;
 // @access Public
 const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const showsResponse = yield axios_1.default.get(tmdb_api_1.popularTVShowsUrl);
-        let shows = showsResponse.data.results;
+        const response = yield axios_1.default.get(tmdb_api_1.popularTVShowsUrl);
+        let shows = response.data.results;
         shows = shows.slice(0, limitNumberOfResults);
         yield addGenreNamesToShowsArray(shows);
         res.json(shows);
@@ -68,15 +69,20 @@ exports.popularTVShows = popularTVShows;
 // @route GET /tv-shows/:tvShowId
 // @access Public
 const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = req.user;
     const { tvShowId } = req.params;
     try {
         const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(tvShowId));
         const tvShow = response.data;
-        for (const season of tvShow.seasons) {
-            const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowSeasonDetailsUrl)(tvShowId, season.season_number));
-            const tvShowSeason = response.data;
-            season.episodes = tvShowSeason.episodes;
+        if (!user) {
+            res.json(tvShow);
+            return;
         }
+        const watchlisted = yield watchlist_1.default.findOne({
+            userId: user._id,
+            tvShowId,
+        });
+        tvShow.is_watchlisted_by_user = !!watchlisted;
         res.json(tvShow);
     }
     catch (error) {
@@ -84,3 +90,31 @@ const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __aw
     }
 }));
 exports.getTVShowDetails = getTVShowDetails;
+// @desc Get TV show season details
+// @route GET /tv-shows/:tvShowId/season/:season
+// @access Public
+const getTVShowSeasonDetails = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = req.user;
+    const { tvShowId, season } = req.params;
+    try {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowSeasonDetailsUrl)(tvShowId, season));
+        const seasonsDetails = response.data;
+        if (!user) {
+            res.json(seasonsDetails.episodes);
+            return;
+        }
+        const watchedEpisodesByUser = yield watchedEpisodes_1.default.find({
+            userId: user._id,
+            tvShowId,
+        });
+        for (const episode of seasonsDetails.episodes) {
+            const isMarkedAsWatched = !!watchedEpisodesByUser.find(w => w.episodeId === episode.id);
+            episode.marked_as_watched = isMarkedAsWatched;
+        }
+        res.json(seasonsDetails.episodes);
+    }
+    catch (error) {
+        throw new Error(error.message || 'Error with TMBD API');
+    }
+}));
+exports.getTVShowSeasonDetails = getTVShowSeasonDetails;

@@ -7,6 +7,19 @@ export class ApiEndpoints {
   static getPopularTVShowsPath = '/tv-shows/popular'
   static searchTVShowsPath = '/tv-shows/search?keyword='
   static getTVShowDetailsPath = (tvShowId: string) => `/tv-shows/${tvShowId}`
+  static getTVShowSeasonDetailsPath = (
+    tvShowId: string | number,
+    season: string | number
+  ) => `/tv-shows/${tvShowId}/season/${season}`
+  static checkWatchlistedByUser = (tvShowId: string) =>
+    `/users/watchlisted/${tvShowId}`
+  static updateWatchlist = (tvShowId: string) => `/users/watchlist/${tvShowId}`
+  static checkEpisodeMarkedAsWatched = (tvShowId: string | number) =>
+    `/users/watched/${tvShowId}`
+  static markEpisodeWatched = '/users/mark-watched'
+  static removeEpisodeFromWatched = (episodeId: string | number) =>
+    `/users/mark-unwatched/${episodeId}`
+  static getWatchlistedTVShows = '/users/watchlist'
 }
 
 declare module '@vue/runtime-core' {

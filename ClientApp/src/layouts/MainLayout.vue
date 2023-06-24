@@ -18,6 +18,11 @@
         <q-route-tab to="/" label="Home" />
         <q-route-tab to="/tv-shows" label="TV Shows" />
         <q-route-tab to="/schedule" label="Schedule" />
+        <q-route-tab
+          v-if="auth.isLoggedIn()"
+          to="/watchlist"
+          label="Watchlist"
+        />
       </q-tabs>
     </q-header>
 
@@ -28,19 +33,19 @@
     <q-drawer show-if-above v-model="rightDrawerOpen" side="right" bordered>
       <q-list>
         <hello-message></hello-message>
-        <q-item v-if="!authStore.userInfo" clickable>
+        <q-item v-if="!auth.isLoggedIn()" clickable>
           <q-item-section>
             <q-item-label @click="$router.push('/login')">Log In</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item v-if="!authStore.userInfo" clickable>
+        <q-item v-if="!auth.isLoggedIn()" clickable>
           <q-item-section>
             <q-item-label @click="$router.push('/signup')"
               >Sign Up</q-item-label
             >
           </q-item-section>
         </q-item>
-        <q-item v-if="authStore.userInfo" clickable>
+        <q-item v-if="auth.isLoggedIn()" clickable>
           <q-item-section>
             <q-item-label @click="logoutClick()">Log Out</q-item-label>
           </q-item-section>
@@ -63,15 +68,15 @@ import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 export default {
   components: { HelloMessage },
   setup() {
-    const authStore = useAuthStore()
+    const auth = useAuthStore()
     const leftDrawerOpen = ref(false)
     const rightDrawerOpen = ref(false)
     polyfillCountryFlagEmojis()
 
-    const logoutClick = async () => authStore.logout()
+    const logoutClick = async () => auth.logout()
 
     return {
-      authStore,
+      auth,
       logoutClick,
       leftDrawerOpen,
       toggleLeftDrawer() {
