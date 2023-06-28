@@ -9,6 +9,7 @@ const generateToken = (user: IUser) => {
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
+      darkMode: user.darkMode,
     },
     process.env.JWT_SECRET as jwt.Secret,
     {

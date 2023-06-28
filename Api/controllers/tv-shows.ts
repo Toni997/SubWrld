@@ -15,7 +15,7 @@ import {
 } from '../interfaces/tv-shows'
 import { IAuthUserRequest } from '../interfaces/request'
 import WatchedEpisode, { IWatchedEpisode } from '../models/watchedEpisodes'
-import { checkWatchlisted } from './user'
+import { checkWatchlisted } from './users'
 import Watchlist from '../models/watchlist'
 
 const limitNumberOfResults = 10
@@ -55,7 +55,8 @@ const searchTVShows = asyncHandler(async (req: Request, res: Response) => {
 
     res.json(shows)
   } catch (error: any) {
-    throw new Error(error.message || 'Error with TMBD API')
+    res.status(error.response?.status || 500)
+    throw new Error(error.message || 'Internal Server Error')
   }
 })
 
@@ -72,7 +73,8 @@ const popularTVShows = asyncHandler(async (req: Request, res: Response) => {
 
     res.json(shows)
   } catch (error: any) {
-    throw new Error(error.message || 'Error with TMBD API')
+    res.status(error.response?.status || 500)
+    throw new Error(error.message || 'Internal Server Error')
   }
 })
 
@@ -100,7 +102,8 @@ const getTVShowDetails = asyncHandler(
       tvShow.is_watchlisted_by_user = !!watchlisted
       res.json(tvShow)
     } catch (error: any) {
-      throw new Error(error.message || 'Error with TMBD API')
+      res.status(error.response?.status || 500)
+      throw new Error(error.message || 'Internal Server Error')
     }
   }
 )
@@ -133,7 +136,8 @@ const getTVShowSeasonDetails = asyncHandler(
       }
       res.json(seasonsDetails.episodes)
     } catch (error: any) {
-      throw new Error(error.message || 'Error with TMBD API')
+      res.status(error.response?.status || 500)
+      throw new Error(error.message || 'Internal Server Error')
     }
   }
 )

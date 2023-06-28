@@ -7,5 +7,7 @@ export interface UserInfo {
 
 export interface AuthState {
   isLoading: boolean
+  darkMode: boolean
+  isSettingDarkMode: boolean
   userInfo: null | UserInfo
 }

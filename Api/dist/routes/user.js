@@ -12,7 +12,7 @@ usersRouter.post('/login', user_1.loginUser);
 usersRouter.post('/signup', user_1.signupUser);
 usersRouter.get('/watchlisted/:tvShowId', authMiddleware_1.authenticate, user_1.checkWatchlisted);
 usersRouter.post('/watchlist/:tvShowId', authMiddleware_1.authenticate, user_1.addToWatchlist);
-usersRouter.delete('/watchlist/:tvShowId', authMiddleware_1.authenticate, user_1.removeFromWatchlist);
+usersRouter.delete('/watchlist/', authMiddleware_1.authenticate, bodyMiddleware_1.validateRemoveFromWatchlist, user_1.removeFromWatchlist);
 usersRouter.get('/watchlist', authMiddleware_1.authenticate, user_1.getWatchlist);
 usersRouter.get('/watched/:episodeId', authMiddleware_1.authenticate, user_1.checkEpisodeWatched);
 usersRouter.post('/mark-watched', authMiddleware_1.authenticate, bodyMiddleware_1.validateMarkWatched, user_1.markEpisodeWatched);

@@ -13,6 +13,7 @@ export interface IUser extends IID, ITimestamps, IUserMethods {
   email: string
   password: string
   isAdmin: boolean
+  darkMode: boolean
 }
 
 export interface IUserWithRefs extends IUser {
@@ -59,6 +60,16 @@ const userSchema = new Schema(
       minLength: [6, 'Password too short'],
     },
     isAdmin: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    reputation: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    darkMode: {
       type: Boolean,
       required: true,
       default: false,

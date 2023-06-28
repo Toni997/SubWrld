@@ -11,17 +11,33 @@ import {
   removeEpisodeFromWatched,
   markEpisodeWatched,
   checkEpisodeWatched,
-} from '../controllers/user'
+  setDarkMode,
+} from '../controllers/users'
 import { authenticate } from '../middleware/authMiddleware'
-import { validateMarkWatched } from '../middleware/bodyMiddleware'
+import {
+  validateMarkWatched,
+  validateRemoveFromWatchlist,
+  validateSetDarkMode,
+} from '../middleware/bodyMiddleware'
 
 const usersRouter: Router = express.Router()
 
 usersRouter.post('/login', loginUser)
 usersRouter.post('/signup', signupUser)
+usersRouter.patch(
+  '/set-dark-mode',
+  authenticate,
+  validateSetDarkMode,
+  setDarkMode
+)
 usersRouter.get('/watchlisted/:tvShowId', authenticate, checkWatchlisted)
 usersRouter.post('/watchlist/:tvShowId', authenticate, addToWatchlist)
-usersRouter.delete('/watchlist/:tvShowId', authenticate, removeFromWatchlist)
+usersRouter.delete(
+  '/watchlist/',
+  authenticate,
+  validateRemoveFromWatchlist,
+  removeFromWatchlist
+)
 usersRouter.get('/watchlist', authenticate, getWatchlist)
 usersRouter.get('/watched/:episodeId', authenticate, checkEpisodeWatched)
 usersRouter.post(

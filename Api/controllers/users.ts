@@ -2,9 +2,9 @@ import asyncHandler from 'express-async-handler'
 import generateToken from '../utils/generateToken'
 import { Request, Response } from 'express'
 import { IAuthUserRequest, IUpdateUserRequest } from '../interfaces/request'
-import User, { IUserWithRefs } from '../models/user'
+import User, { IUser } from '../models/user'
 import Watchlist, { IWatchlistWithTVShowDetails } from '../models/watchlist'
-import mongoose, { Query, Schema } from 'mongoose'
+import mongoose from 'mongoose'
 import axios from 'axios'
 import {
   getTVShowDetailsUrl,
@@ -31,7 +31,7 @@ import WatchedEpisode, {
 const loginUser = asyncHandler(async (req: Request, res: Response) => {
   const { username, password } = req.body
 
-  const user = await User.findOne({ username }).select('-watchlist')
+  const user = await User.findOne({ username })
 
   if (user && (await user.matchPassword(password))) {
     res.json({
@@ -39,6 +39,7 @@ const loginUser = asyncHandler(async (req: Request, res: Response) => {
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
+      darkMode: user.darkMode,
       token: generateToken(user),
     })
   } else {
@@ -78,7 +79,6 @@ const signupUser = asyncHandler(async (req: Request, res: Response) => {
       _id: user._id,
       username: user.username,
       email: user.email,
-      isAdmin: user.isAdmin,
       token: generateToken(user),
     })
   } else {
@@ -150,12 +150,8 @@ const getWatchlist = asyncHandler(
         item.status = tvShow.status
       }
     } catch (error: any) {
-      if (error.response) {
-        res.status(error.response.status).json(error.response.statusText)
-      } else {
-        res.status(503)
-        throw new Error('TMDB Api Unavailable')
-      }
+      res.status(error.response?.status || 500)
+      throw new Error(error.message || 'Internal Server Error')
     }
     res.json(watchlist)
   }
@@ -193,8 +189,8 @@ const addToWatchlist = asyncHandler(
       if (error.response) {
         res.status(error.response.status).json(error.response.statusText)
       } else {
-        res.status(503)
-        throw new Error('TMDB Api Unavailable')
+        res.status(error.response?.status || 500)
+        throw new Error(error.message || 'Internal Server Error')
       }
     }
 
@@ -217,22 +213,30 @@ const addToWatchlist = asyncHandler(
 // @access Private
 const removeFromWatchlist = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
-    const userId = req.user?._id
-    const tvShowId = req.params.tvShowId
+    const userId = req.user?._id as mongoose.Types.ObjectId
+    const { tvShowIds }: { tvShowIds: number[] } = req.body
+    const watchlistedToInsert: number[] = []
 
-    const watchlisted = await Watchlist.findOne({
-      userId,
-      tvShowId,
-    })
+    for (const tvShowId of tvShowIds) {
+      const watchlisted = await Watchlist.findOne({
+        userId,
+        tvShowId,
+      })
 
-    if (!watchlisted) {
-      res.status(422)
-      throw new Error("You haven't added this show to watchlist yet")
+      if (watchlisted) {
+        watchlistedToInsert.push(tvShowId)
+      }
     }
 
-    await watchlisted.deleteOne()
+    if (watchlistedToInsert.length)
+      await Watchlist.deleteMany({
+        userId,
+        tvShowId: { $in: watchlistedToInsert },
+      })
 
-    res.json('Removed from watchlist')
+    res.json(
+      `Removed ${watchlistedToInsert.length} TV shows from your watchlist`
+    )
   }
 )
 
@@ -344,12 +348,8 @@ const markEpisodeWatched = asyncHandler(
     try {
       await axios.get(getTVShowDetailsUrl(markWatched.tvShowId))
     } catch (error: any) {
-      if (error.response) {
-        res.status(error.response.status).json(error.response.statusText)
-      } else {
-        res.status(503)
-        throw new Error('TMDB Api Unavailable')
-      }
+      res.status(error.response?.status || 500)
+      throw new Error(error.message || 'Internal Server Error')
     }
 
     const alreadyWatchedEpisodes = await WatchedEpisode.find({
@@ -382,7 +382,8 @@ const markEpisodeWatched = asyncHandler(
         res.status(200).json('All episodes have already been marked as watched')
       }
     } catch (error: any) {
-      res.status(400).json(error.message || 'Error with TMDB Api')
+      res.status(error.response?.status || 500)
+      throw new Error(error.message || 'Internal Server Error')
     }
   }
 )
@@ -411,6 +412,20 @@ const removeEpisodeFromWatched = asyncHandler(
   }
 )
 
+// @desc set dark mode
+// @route PATCH /api/set-dark-mode
+// @access Private
+const setDarkMode = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const { darkMode } = req.body
+    const authenticatedUser = req.user as IUser
+
+    await User.updateOne({ _id: authenticatedUser._id }, { darkMode })
+
+    res.json('Success')
+  }
+)
+
 export {
   loginUser,
   signupUser,
@@ -423,4 +438,5 @@ export {
   checkEpisodeWatched,
   removeEpisodeFromWatched,
   markEpisodeWatched,
+  setDarkMode,
 }

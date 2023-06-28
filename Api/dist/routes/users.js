@@ -4,13 +4,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const user_ts_1 = require("../controllers/user.ts");
-const authMiddleware_ts_1 = require("../middleware/authMiddleware.ts");
-const router = express_1.default.Router();
-router.route('/').post(user_ts_1.registerUser);
-router.post('/login', user_ts_1.authUser);
-router
-    .route('/profile')
-    .get(authMiddleware_ts_1.authenticate, user_ts_1.getUserProfile)
-    .put(authMiddleware_ts_1.authenticate, user_ts_1.updateUserProfile);
-exports.default = router;
+const users_1 = require("../controllers/users");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const bodyMiddleware_1 = require("../middleware/bodyMiddleware");
+const usersRouter = express_1.default.Router();
+usersRouter.post('/login', users_1.loginUser);
+usersRouter.post('/signup', users_1.signupUser);
+usersRouter.patch('/set-dark-mode', authMiddleware_1.authenticate, bodyMiddleware_1.validateSetDarkMode, users_1.setDarkMode);
+usersRouter.get('/watchlisted/:tvShowId', authMiddleware_1.authenticate, users_1.checkWatchlisted);
+usersRouter.post('/watchlist/:tvShowId', authMiddleware_1.authenticate, users_1.addToWatchlist);
+usersRouter.delete('/watchlist/', authMiddleware_1.authenticate, bodyMiddleware_1.validateRemoveFromWatchlist, users_1.removeFromWatchlist);
+usersRouter.get('/watchlist', authMiddleware_1.authenticate, users_1.getWatchlist);
+usersRouter.get('/watched/:episodeId', authMiddleware_1.authenticate, users_1.checkEpisodeWatched);
+usersRouter.post('/mark-watched', authMiddleware_1.authenticate, bodyMiddleware_1.validateMarkWatched, users_1.markEpisodeWatched);
+usersRouter.delete('/mark-unwatched/:episodeId', authMiddleware_1.authenticate, users_1.removeEpisodeFromWatched);
+usersRouter.get('/:userId', users_1.getUser);
+usersRouter.put('/', authMiddleware_1.authenticate, users_1.updateUser);
+exports.default = usersRouter;

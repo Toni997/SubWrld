@@ -10,6 +10,7 @@ const generateToken = (user) => {
         username: user.username,
         email: user.email,
         isAdmin: user.isAdmin,
+        darkMode: user.darkMode,
     }, process.env.JWT_SECRET, {
         expiresIn: '1d',
     });

@@ -13,13 +13,21 @@ export class ApiEndpoints {
   ) => `/tv-shows/${tvShowId}/season/${season}`
   static checkWatchlistedByUser = (tvShowId: string) =>
     `/users/watchlisted/${tvShowId}`
-  static updateWatchlist = (tvShowId: string) => `/users/watchlist/${tvShowId}`
+  static addToWatchlist = (tvShowId: string | number) =>
+    `/users/watchlist/${tvShowId}`
+  static removeFromWatchlist = '/users/watchlist'
   static checkEpisodeMarkedAsWatched = (tvShowId: string | number) =>
     `/users/watched/${tvShowId}`
   static markEpisodeWatched = '/users/mark-watched'
   static removeEpisodeFromWatched = (episodeId: string | number) =>
     `/users/mark-unwatched/${episodeId}`
   static getWatchlistedTVShows = '/users/watchlist'
+  static addSubtitleRequest = '/subtitles/requests'
+  static getSubtitleRequests = (episodeId: string | number) =>
+    `/subtitles/requests/${episodeId}`
+  static deleteSubtitleRequest = (episodeId: string | number) =>
+    `/subtitles/requests/${episodeId}`
+  static setDarkMode = '/users/set-dark-mode'
 }
 
 declare module '@vue/runtime-core' {

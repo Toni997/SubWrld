@@ -19,8 +19,8 @@ const routes: RouteRecordRaw[] = [
         path: '/login',
         component: LogInPage,
         beforeEnter: (to, from, next): any => {
-          const authStore = useAuthStore()
-          if (authStore.userInfo) {
+          const auth = useAuthStore()
+          if (auth.isLoggedIn()) {
             next('/')
           }
           next()
@@ -30,8 +30,8 @@ const routes: RouteRecordRaw[] = [
         path: '/signup',
         component: SignUpPage,
         beforeEnter: (to, from, next): any => {
-          const authStore = useAuthStore()
-          if (authStore.userInfo) {
+          const auth = useAuthStore()
+          if (auth.isLoggedIn()) {
             next('/')
           }
           next()
@@ -51,6 +51,13 @@ const routes: RouteRecordRaw[] = [
           {
             path: '/watchlist',
             component: WatchlistPage,
+            beforeEnter: (to, from, next): any => {
+              const auth = useAuthStore()
+              if (auth.isLoggedIn()) {
+                next()
+              }
+              next('/')
+            },
           },
         ],
       },

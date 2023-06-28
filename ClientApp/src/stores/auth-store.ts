@@ -6,6 +6,8 @@ export const useAuthStore = defineStore({
   id: 'auth',
   state: (): AuthState => ({
     isLoading: false,
+    darkMode: false,
+    isSettingDarkMode: false,
     userInfo: null,
   }),
   actions: {
@@ -16,16 +18,7 @@ export const useAuthStore = defineStore({
           username,
           password,
         })
-
-        this.userInfo = {
-          _id: data._id,
-          username: data.username,
-          email: data.email,
-          isAdmin: data.isAdmin,
-        }
-
-        localStorage.setItem('token', data.token)
-
+        this.loadUserInfo(data)
         this.router.push('/')
       } catch (error: any) {
         throw new Error(error.response ? 'Wrong credentials' : 'Server error')
@@ -33,13 +26,16 @@ export const useAuthStore = defineStore({
         this.isLoading = false
       }
     },
-    loadUserInfo(decodedToken: any): void {
+    loadUserInfo(userInfo: any): void {
       this.userInfo = {
-        _id: decodedToken._id,
-        username: decodedToken.username,
-        email: decodedToken.email,
-        isAdmin: decodedToken.isAdmin,
+        _id: userInfo._id,
+        username: userInfo.username,
+        email: userInfo.email,
+        isAdmin: userInfo.isAdmin,
       }
+      this.darkMode = userInfo.darkMode
+      userInfo.token && localStorage.setItem('token', userInfo.token)
+      localStorage.setItem('darkMode', userInfo.darkMode.toString())
     },
     async signup(
       username: string,
@@ -54,15 +50,7 @@ export const useAuthStore = defineStore({
           password,
         })
 
-        this.userInfo = {
-          _id: data._id,
-          username: data.username,
-          email: data.email,
-          isAdmin: data.isAdmin,
-        }
-
-        localStorage.setItem('token', data.token)
-
+        this.loadUserInfo(data)
         this.router.push('/')
       } catch (error: any) {
         throw new Error(error.response.data.message || 'Server error')
@@ -77,6 +65,30 @@ export const useAuthStore = defineStore({
     },
     isLoggedIn() {
       return !!this.userInfo
+    },
+    isAdmin() {
+      return this.userInfo?.isAdmin || false
+    },
+    async setDarkMode(darkMode: boolean): Promise<void> {
+      this.isSettingDarkMode = true
+      this.darkMode = darkMode
+      localStorage.setItem('darkMode', darkMode.toString())
+      try {
+        if (this.userInfo) {
+          await api.patch(ApiEndpoints.setDarkMode, {
+            darkMode,
+          })
+        }
+      } catch (error: any) {
+        throw new Error(error.response ? 'Wrong credentials' : 'Server error')
+      } finally {
+        this.isSettingDarkMode = false
+      }
+    },
+    loadDarkModeFromStorage() {
+      const darkModeFromStorage = localStorage.getItem('darkMode')
+      const darkModeToBool = Boolean(darkModeFromStorage)
+      this.darkMode = darkModeToBool
     },
   },
 })

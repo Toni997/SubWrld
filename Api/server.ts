@@ -2,12 +2,15 @@ import express, { Express } from 'express'
 import dotenv from 'dotenv'
 import morgan from 'morgan'
 import cors from 'cors'
+import multer from 'multer'
 import { errorHandler, notFound } from './middleware/errorMiddleware'
 import connectDB from './config/mongo'
 
 import indexRouter from './routes/index'
-import usersRouter from './routes/user'
-import searchRouter from './routes/tv-shows'
+import usersRouter from './routes/users'
+import tvShowRouter from './routes/tv-shows'
+import subtitleRouter from './routes/subtitles'
+const upload = multer({ dest: 'uploads/' })
 
 dotenv.config()
 
@@ -26,7 +29,8 @@ app.use(
 
 app.use('/', indexRouter)
 app.use('/users', usersRouter)
-app.use('/tv-shows', searchRouter)
+app.use('/tv-shows', tvShowRouter)
+app.use('/subtitles', subtitleRouter)
 
 app.use(notFound)
 app.use(errorHandler)

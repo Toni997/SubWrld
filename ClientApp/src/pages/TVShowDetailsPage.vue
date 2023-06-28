@@ -6,10 +6,23 @@
       bg-color="white"
       icon="autorenew"
     >
+      <q-dialog v-model="isRequestSubtitleDialogShown" persistent>
+        <request-subtitle-form
+          style="width: min(600px, 100%)"
+          :episode="episodeForDialog"
+          @request-saved="onSubtitleRequestSaved"
+        />
+      </q-dialog>
+      <q-dialog v-model="isSubtitleRequestsListDialogShows" maximized>
+        <subtitle-requests-list
+          :episode="episodeForDialog"
+          @close-dialog="isSubtitleRequestsListDialogShows = false"
+        />
+      </q-dialog>
       <q-dialog v-model="markWatchedDialog">
         <q-card>
           <q-card-section class="row items-center">
-            <span class="q-ml-md text-body1">
+            <span class="text-body1">
               Do you also want to mark all previous episodes as watched?
             </span>
           </q-card-section>
@@ -114,7 +127,6 @@
               ({{ tvShowDetails.vote_average }},
               {{ tvShowDetails.vote_count }} votes)
             </div>
-
             <p class="q-mt-md text-body1">{{ tvShowDetails.overview }}</p>
             <p class="text-body1" v-if="tvShowDetails.original_name">
               Original Name:
@@ -254,6 +266,30 @@
                       <p class="text-body1 q-my-sm">
                         {{ episode.overview || 'Plot unknown' }}
                       </p>
+                      <q-btn icon="more_horiz" flat round>
+                        <q-menu>
+                          <q-list>
+                            <q-item clickable v-close-popup>
+                              <q-item-section>Upload Subtitle</q-item-section>
+                            </q-item>
+                            <q-separator />
+                            <q-item
+                              clickable
+                              @click="requestSubtitleClick(episode)"
+                              v-close-popup
+                            >
+                              <q-item-section>Request Subtitle</q-item-section>
+                            </q-item>
+                            <q-item
+                              clickable
+                              @click="listOfSubtitleRequestsClick(episode)"
+                              v-close-popup
+                            >
+                              <q-item-section>List of Requests</q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-menu>
+                      </q-btn>
                     </q-card-section>
                   </q-card>
                 </q-expansion-item>
@@ -277,12 +313,15 @@ import {
   IMarkWatched,
   ITVShowDetails,
   ITVShowEpisode,
+  ITVShowEpisodeForDialog,
   ITVShowSeason,
-  IUpdateWatchedEpisodes,
 } from '../interfaces/tv-show'
+import RequestSubtitleForm from '../components/RequestSubtitleForm.vue'
+import SubtitleRequestsList from '../components/SubtitleRequestsList.vue'
 import { getEmojiFlag, countries } from 'countries-list'
 
 export default defineComponent({
+  components: { RequestSubtitleForm, SubtitleRequestsList },
   setup() {
     const route = useRoute()
     const auth = useAuthStore()
@@ -296,16 +335,23 @@ export default defineComponent({
     const markWatchedDialog: Ref<boolean> = ref(false)
     const markWatchedSeasonSelected: Ref<ITVShowSeason | null> = ref(null)
     const markWatchedEpisodeSelectedIndex: Ref<number | null> = ref(null)
+    const isRequestSubtitleDialogShown: Ref<boolean> = ref(false)
+    const isSubtitleRequestsListDialogShows: Ref<boolean> = ref(false)
+    const episodeForDialog = reactive<ITVShowEpisodeForDialog>({
+      details: null,
+      tvShowId: null,
+      justAddedId: null,
+    })
 
-    onMounted(() => {
+    onMounted(async () => {
       tvShowId.value = route.params.tvShowId as string
-      tab.value = null
-      loadTVShowDetails()
+      await loadTVShowDetails()
     })
 
     const refresh = async (done: any) => {
       tvShowDetails.value = null
       tab.value = null
+      error.value = ''
       await loadTVShowDetails()
       done()
     }
@@ -374,12 +420,14 @@ export default defineComponent({
       try {
         let response = null
         if (tvShowDetails.value.is_watchlisted_by_user) {
-          response = await api.delete(
-            ApiEndpoints.updateWatchlist(tvShowId.value)
-          )
+          response = await api.delete(ApiEndpoints.removeFromWatchlist, {
+            data: {
+              tvShowIds: [tvShowDetails.value.id],
+            },
+          })
         } else {
           response = await api.post(
-            ApiEndpoints.updateWatchlist(tvShowId.value)
+            ApiEndpoints.addToWatchlist(tvShowDetails.value.id)
           )
         }
 
@@ -586,9 +634,28 @@ export default defineComponent({
     const isAirDateDayInThePastOrPresen = (airDate: string) => {
       const givenDate = new Date(airDate)
       const currentDate = new Date()
-      currentDate.setHours(0, 0, 0, 0)
 
       return givenDate <= currentDate
+    }
+
+    const requestSubtitleClick = (episodeDetails: ITVShowEpisode) => {
+      if (!tvShowDetails.value) return
+      isRequestSubtitleDialogShown.value = true
+      episodeForDialog.details = episodeDetails
+      episodeForDialog.tvShowId = tvShowDetails.value.id
+    }
+
+    const listOfSubtitleRequestsClick = (episodeDetails: ITVShowEpisode) => {
+      if (!tvShowDetails.value) return
+      isSubtitleRequestsListDialogShows.value = true
+      episodeForDialog.details = episodeDetails
+      episodeForDialog.tvShowId = tvShowDetails.value.id
+    }
+
+    const onSubtitleRequestSaved = (justAddedId: string) => {
+      isRequestSubtitleDialogShown.value = false
+      isSubtitleRequestsListDialogShows.value = true
+      episodeForDialog.justAddedSubtitleRequestId = justAddedId
     }
 
     const getCountryKey = (key: string): keyof typeof countries =>
@@ -616,6 +683,12 @@ export default defineComponent({
       markEpisodeAsWatchedWithPrevious,
       markSingleEpisodeAsWatched,
       isAirDateDayInThePastOrPresen,
+      isRequestSubtitleDialogShown,
+      requestSubtitleClick,
+      episodeForDialog,
+      isSubtitleRequestsListDialogShows,
+      listOfSubtitleRequestsClick,
+      onSubtitleRequestSaved,
     }
   },
 })
@@ -638,7 +711,7 @@ export default defineComponent({
   overflow-x: auto;
 
   img {
-    filter: brightness(0) invert(0.8);
+    filter: brightness(0) invert(0.6);
   }
 }
 </style>

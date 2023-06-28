@@ -11,7 +11,6 @@ const watchedEpisodeSchema = new mongoose_1.Schema({
     tvShowId: {
         type: Number,
         required: true,
-        index: true,
     },
     season: {
         type: Number,
@@ -24,10 +23,11 @@ const watchedEpisodeSchema = new mongoose_1.Schema({
     episodeId: {
         type: Number,
         required: true,
-        index: true,
     },
 }, {
     timestamps: true,
 });
+watchedEpisodeSchema.index({ userId: 1, tvShowId: 1 });
+watchedEpisodeSchema.index({ userId: 1, episodeId: 1 });
 const WatchedEpisode = (0, mongoose_1.model)('WatchedEpisode', watchedEpisodeSchema);
 exports.default = WatchedEpisode;

@@ -10,21 +10,24 @@ import jwt_decode from 'jwt-decode'
 export default {
   setup() {
     const $q = useQuasar()
-    const authStore = useAuthStore()
+    const auth = useAuthStore()
 
     const token = localStorage.getItem('token')
     if (token) {
       const decoded: any = jwt_decode(token)
       const currentTime = Date.now() / 1000
       if (decoded.exp >= currentTime) {
-        authStore.loadUserInfo(decoded)
+        auth.loadUserInfo(decoded)
       } else {
         localStorage.removeItem('token')
       }
     }
 
-    // calling here; equivalent to when component is created
-    $q.dark.set(true)
+    if (!auth.isLoggedIn()) {
+      auth.loadDarkModeFromStorage()
+    }
+
+    $q.dark.set(auth.darkMode)
   },
 }
 </script>

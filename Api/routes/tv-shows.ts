@@ -7,15 +7,15 @@ import {
 } from '../controllers/tv-shows'
 import { passUserToRequest } from '../middleware/authMiddleware'
 
-const searchRouter: Router = express.Router()
+const tvShowRouter: Router = express.Router()
 
-searchRouter.get('/search', searchTVShows)
-searchRouter.get('/popular', popularTVShows)
-searchRouter.get(
+tvShowRouter.get('/search', searchTVShows)
+tvShowRouter.get('/popular', popularTVShows)
+tvShowRouter.get(
   '/:tvShowId/season/:season',
   passUserToRequest,
   getTVShowSeasonDetails
 )
-searchRouter.get('/:tvShowId', passUserToRequest, getTVShowDetails)
+tvShowRouter.get('/:tvShowId', passUserToRequest, getTVShowDetails)
 
-export default searchRouter
+export default tvShowRouter

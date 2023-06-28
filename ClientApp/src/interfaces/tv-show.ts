@@ -99,3 +99,9 @@ export interface IUpdateWatchedEpisodes {
   season: number
   episodes: number[] | number | null
 }
+
+export interface ITVShowEpisodeForDialog {
+  details: ITVShowEpisode | null
+  tvShowId: number | null
+  justAddedSubtitleRequestId: string | null
+}

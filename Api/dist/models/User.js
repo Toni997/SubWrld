@@ -51,6 +51,16 @@ const userSchema = new mongoose_1.Schema({
         required: true,
         default: false,
     },
+    reputation: {
+        type: Number,
+        required: true,
+        default: 0,
+    },
+    darkMode: {
+        type: Boolean,
+        required: true,
+        default: false,
+    },
 }, {
     timestamps: true,
 });

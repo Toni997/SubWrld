@@ -30,7 +30,6 @@ const watchedEpisodeSchema = new Schema(
     tvShowId: {
       type: Number,
       required: true,
-      index: true,
     },
     season: {
       type: Number,
@@ -43,13 +42,15 @@ const watchedEpisodeSchema = new Schema(
     episodeId: {
       type: Number,
       required: true,
-      index: true,
     },
   },
   {
     timestamps: true,
   }
 )
+
+watchedEpisodeSchema.index({ userId: 1, tvShowId: 1 })
+watchedEpisodeSchema.index({ userId: 1, episodeId: 1 })
 
 const WatchedEpisode = model<IWatchedEpisode>(
   'WatchedEpisode',

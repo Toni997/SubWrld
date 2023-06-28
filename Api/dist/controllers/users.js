@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markEpisodeWatched = exports.removeEpisodeFromWatched = exports.checkEpisodeWatched = exports.removeFromWatchlist = exports.addToWatchlist = exports.checkWatchlisted = exports.getWatchlist = exports.updateUser = exports.getUser = exports.signupUser = exports.loginUser = void 0;
+exports.setDarkMode = exports.markEpisodeWatched = exports.removeEpisodeFromWatched = exports.checkEpisodeWatched = exports.removeFromWatchlist = exports.addToWatchlist = exports.checkWatchlisted = exports.getWatchlist = exports.updateUser = exports.getUser = exports.signupUser = exports.loginUser = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const generateToken_1 = __importDefault(require("../utils/generateToken"));
 const user_1 = __importDefault(require("../models/user"));
@@ -27,13 +27,14 @@ const watchedEpisodes_1 = __importDefault(require("../models/watchedEpisodes"));
 // @access Public
 const loginUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
-    const user = yield user_1.default.findOne({ username }).select('-watchlist');
+    const user = yield user_1.default.findOne({ username });
     if (user && (yield user.matchPassword(password))) {
         res.json({
             _id: user._id,
             username: user.username,
             email: user.email,
             isAdmin: user.isAdmin,
+            darkMode: user.darkMode,
             token: (0, generateToken_1.default)(user),
         });
     }
@@ -68,7 +69,6 @@ const signupUser = (0, express_async_handler_1.default)((req, res) => __awaiter(
             _id: user._id,
             username: user.username,
             email: user.email,
-            isAdmin: user.isAdmin,
             token: (0, generateToken_1.default)(user),
         });
     }
@@ -123,7 +123,7 @@ exports.getUser = getUser;
 // @route GET /api/users/watchlist
 // @access Private
 const getWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b;
+    var _b, _c;
     const watchlist = yield watchlist_1.default.find({
         userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id,
     }).lean();
@@ -137,13 +137,8 @@ const getWatchlist = (0, express_async_handler_1.default)((req, res) => __awaite
         }
     }
     catch (error) {
-        if (error.response) {
-            res.status(error.response.status).json(error.response.statusText);
-        }
-        else {
-            res.status(503);
-            throw new Error('TMDB Api Unavailable');
-        }
+        res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
     res.json(watchlist);
 }));
@@ -152,9 +147,9 @@ exports.getWatchlist = getWatchlist;
 // @route GET /api/users/watchlisted/:tvShowId
 // @access Private
 const checkWatchlisted = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c;
+    var _d;
     const watchlisted = yield watchlist_1.default.findOne({
-        userId: (_c = req.user) === null || _c === void 0 ? void 0 : _c._id,
+        userId: (_d = req.user) === null || _d === void 0 ? void 0 : _d._id,
         tvShowId: req.params.tvShowId,
     });
     res.json(!!watchlisted);
@@ -164,8 +159,8 @@ exports.checkWatchlisted = checkWatchlisted;
 // @route POST /api/users/watchlist/:tvShowId
 // @access Private
 const addToWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
-    const userId = new mongoose_1.default.Types.ObjectId((_d = req.user) === null || _d === void 0 ? void 0 : _d._id);
+    var _e, _f;
+    const userId = new mongoose_1.default.Types.ObjectId((_e = req.user) === null || _e === void 0 ? void 0 : _e._id);
     const tvShowId = Number(req.params.tvShowId);
     const watchlisted = yield watchlist_1.default.findOne({
         userId,
@@ -179,8 +174,8 @@ const addToWatchlist = (0, express_async_handler_1.default)((req, res) => __awai
             res.status(error.response.status).json(error.response.statusText);
         }
         else {
-            res.status(503);
-            throw new Error('TMDB Api Unavailable');
+            res.status(((_f = error.response) === null || _f === void 0 ? void 0 : _f.status) || 500);
+            throw new Error(error.message || 'Internal Server Error');
         }
     }
     if (watchlisted) {
@@ -198,8 +193,8 @@ exports.addToWatchlist = addToWatchlist;
 // @route DELETE /api/users/watchlist/:tvShowId
 // @access Private
 const removeFromWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e;
-    const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e._id;
+    var _g;
+    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
     const { tvShowIds } = req.body;
     const watchlistedToInsert = [];
     for (const tvShowId of tvShowIds) {
@@ -223,9 +218,9 @@ exports.removeFromWatchlist = removeFromWatchlist;
 // @route GET /api/users/watched/:episodeId
 // @access Private
 const checkEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f;
+    var _h;
     const watchedEpisode = yield watchedEpisodes_1.default.findOne({
-        userId: (_f = req.user) === null || _f === void 0 ? void 0 : _f._id,
+        userId: (_h = req.user) === null || _h === void 0 ? void 0 : _h._id,
         episodeId: req.params.episodeId,
     });
     res.json(!!watchedEpisode);
@@ -296,21 +291,16 @@ const handleMarkWatched = (userId, tvShowId, watched, alreadyWatchedEpisodes, wa
 // @route POST /api/users/watchlist/:tvShowId
 // @access Private
 const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g;
-    const userId = new mongoose_1.default.Types.ObjectId((_g = req.user) === null || _g === void 0 ? void 0 : _g._id);
+    var _j, _k, _l;
+    const userId = new mongoose_1.default.Types.ObjectId((_j = req.user) === null || _j === void 0 ? void 0 : _j._id);
     const markWatched = req.body;
     const watchedEpisodesToInsert = [];
     try {
         yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(markWatched.tvShowId));
     }
     catch (error) {
-        if (error.response) {
-            res.status(error.response.status).json(error.response.statusText);
-        }
-        else {
-            res.status(503);
-            throw new Error('TMDB Api Unavailable');
-        }
+        res.status(((_k = error.response) === null || _k === void 0 ? void 0 : _k.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
     const alreadyWatchedEpisodes = yield watchedEpisodes_1.default.find({
         userId,
@@ -333,7 +323,8 @@ const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __
         }
     }
     catch (error) {
-        res.status(400).json(error.message || 'Error with TMDB Api');
+        res.status(((_l = error.response) === null || _l === void 0 ? void 0 : _l.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
 }));
 exports.markEpisodeWatched = markEpisodeWatched;
@@ -341,8 +332,8 @@ exports.markEpisodeWatched = markEpisodeWatched;
 // @route DELETE /api/users/watched/:episodeId
 // @access Private
 const removeEpisodeFromWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h;
-    const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h._id;
+    var _m;
+    const userId = (_m = req.user) === null || _m === void 0 ? void 0 : _m._id;
     const episodeId = Number(req.params.episodeId);
     const watchedEpisode = yield watchedEpisodes_1.default.findOne({
         userId,
@@ -356,3 +347,13 @@ const removeEpisodeFromWatched = (0, express_async_handler_1.default)((req, res)
     res.json('Removed from watched episodes');
 }));
 exports.removeEpisodeFromWatched = removeEpisodeFromWatched;
+// @desc set dark mode
+// @route PATCH /api/set-dark-mode
+// @access Private
+const setDarkMode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { darkMode } = req.body;
+    const authenticatedUser = req.user;
+    yield user_1.default.updateOne({ _id: authenticatedUser._id }, { darkMode });
+    res.json('Success');
+}));
+exports.setDarkMode = setDarkMode;

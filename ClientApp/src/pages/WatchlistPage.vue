@@ -1,49 +1,77 @@
 <template>
   <div class="q-pa-md">
-    <h2>Watchlist</h2>
-    <q-separator></q-separator>
-    <q-banner v-if="error" dense class="text-white bg-red">
-      <template v-slot:avatar>
-        <q-icon name="error" color="white" />
-      </template>
-      {{ false }}
-    </q-banner>
-
-    <q-table
-      @row-click="(event, row) => rowClick(row)"
-      class="q-mt-md text-body1"
-      flat
-      bordered
-      :loading="isLoading"
-      ref="tableRef"
-      title="Watchlist"
-      :rows="getRows()"
-      :columns="columns"
-      row-key="tvShowId"
-      selection="multiple"
-      v-model:selected="selected"
-      :visible-columns="['-tvShowId']"
-      :pagination-options="{ rowsPerPage: 10 }"
+    <q-dialog v-model="confirmRemoveDialog">
+      <q-card>
+        <q-card-section class="row items-center">
+          <span class="text-body1">
+            Are you sure you want to remove {{ selected.length }} TV Shows from
+            your watchlist?
+          </span>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="grey" v-close-popup />
+          <q-btn
+            @click="removeSelected"
+            flat
+            label="Yes"
+            color="green"
+            v-close-popup
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-pull-to-refresh
+      @refresh="refresh"
+      color="primary"
+      bg-color="white"
+      icon="autorenew"
     >
-      <template v-slot:loading>
-        <q-inner-loading showing color="primary" />
-      </template>
-      <template v-slot:top>
-        <q-btn
-          v-if="selected.length"
-          class="q-ml-sm"
-          color="primary"
-          label="Remove Selected"
-          @click="removeSelected"
-        />
-        <q-space />
-        <q-input filled dense debounce="500" v-model="filterWatchlist">
-          <template v-slot:append>
-            <q-icon name="search" />
-          </template>
-        </q-input>
-      </template>
-    </q-table>
+      <h2>Watchlist</h2>
+      <q-separator></q-separator>
+      <q-banner v-if="error" dense class="text-white bg-red">
+        <template v-slot:avatar>
+          <q-icon name="error" color="white" />
+        </template>
+        {{ error }}
+      </q-banner>
+
+      <q-table
+        @row-click="(event, row) => rowClick(row)"
+        class="q-mt-md text-body1"
+        flat
+        bordered
+        :loading="isLoading"
+        ref="tableRef"
+        title="Watchlist"
+        :rows="getRows()"
+        :columns="columns"
+        row-key="tvShowId"
+        selection="multiple"
+        v-model:selected="selected"
+        :visible-columns="['-tvShowId']"
+        :pagination-options="{ rowsPerPage: 10 }"
+      >
+        <template v-slot:loading>
+          <q-inner-loading showing color="primary" />
+        </template>
+        <template v-slot:top>
+          <q-btn
+            v-if="selected.length"
+            class="q-ml-sm"
+            color="red"
+            icon="delete"
+            label="Remove Selected"
+            @click="confirmRemoveDialog = true"
+          />
+          <q-space />
+          <q-input filled dense debounce="500" v-model="filterWatchlist">
+            <template v-slot:append>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </template>
+      </q-table>
+    </q-pull-to-refresh>
   </div>
 </template>
 
@@ -109,10 +137,20 @@ export default defineComponent({
     const error: Ref<string> = ref('')
     const selected: Ref<IWatchlistWithTVShowDetails[]> = ref([])
     const filterWatchlist: Ref<string> = ref('')
+    const confirmRemoveDialog: Ref<boolean> = ref(false)
 
     onMounted(async () => {
       await loadWatchlist()
     })
+
+    const refresh = async (done: any) => {
+      rows.value = []
+      selected.value = []
+      filterWatchlist.value = ''
+      error.value = ''
+      await loadWatchlist()
+      done()
+    }
 
     const loadWatchlist = async () => {
       isLoading.value = true
@@ -137,8 +175,27 @@ export default defineComponent({
       router.push('/tv-shows/' + row.tvShowId)
     }
 
-    const removeSelected = () => {
-      // TODO implement
+    const removeSelected = async () => {
+      isLoading.value = true
+      try {
+        const response = await api.delete(ApiEndpoints.removeFromWatchlist, {
+          data: {
+            tvShowIds: selected.value.map((s) => s.tvShowId),
+          },
+        })
+
+        if (response.status !== 200 && response.status !== 201) {
+          console.log(response.statusText)
+          return
+        }
+
+        await loadWatchlist()
+        selected.value = []
+      } catch (err) {
+        error.value = 'Failed to fetch.'
+      } finally {
+        isLoading.value = false
+      }
     }
 
     return {
@@ -151,6 +208,8 @@ export default defineComponent({
       filterWatchlist,
       getRows,
       rowClick,
+      refresh,
+      confirmRemoveDialog,
     }
   },
 })

@@ -16,5 +16,6 @@ const watchlistSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
+watchlistSchema.index({ userId: 1, tvSHowId: 1 });
 const Watchlist = (0, mongoose_1.model)('Watchlist', watchlistSchema);
 exports.default = Watchlist;

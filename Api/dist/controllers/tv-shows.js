@@ -32,7 +32,7 @@ const addGenreNamesToShowsArray = (showsArray) => __awaiter(void 0, void 0, void
 // @route GET /tv-shows/search?keword=<keyword>
 // @access Public
 const searchTVShows = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     const keyword = (_a = req.query.keyword) === null || _a === void 0 ? void 0 : _a.toString();
     if (!keyword || keyword.trim().length < 1) {
         throw new Error('Search keyword should be at least 1 character long');
@@ -45,7 +45,8 @@ const searchTVShows = (0, express_async_handler_1.default)((req, res) => __await
         res.json(shows);
     }
     catch (error) {
-        throw new Error(error.message || 'Error with TMBD API');
+        res.status(((_b = error.response) === null || _b === void 0 ? void 0 : _b.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
 }));
 exports.searchTVShows = searchTVShows;
@@ -53,6 +54,7 @@ exports.searchTVShows = searchTVShows;
 // @route GET /tv-shows/popular
 // @access Public
 const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c;
     try {
         const response = yield axios_1.default.get(tmdb_api_1.popularTVShowsUrl);
         let shows = response.data.results;
@@ -61,7 +63,8 @@ const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awai
         res.json(shows);
     }
     catch (error) {
-        throw new Error(error.message || 'Error with TMBD API');
+        res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
 }));
 exports.popularTVShows = popularTVShows;
@@ -69,6 +72,7 @@ exports.popularTVShows = popularTVShows;
 // @route GET /tv-shows/:tvShowId
 // @access Public
 const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _d;
     const user = req.user;
     const { tvShowId } = req.params;
     try {
@@ -86,7 +90,8 @@ const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __aw
         res.json(tvShow);
     }
     catch (error) {
-        throw new Error(error.message || 'Error with TMBD API');
+        res.status(((_d = error.response) === null || _d === void 0 ? void 0 : _d.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
 }));
 exports.getTVShowDetails = getTVShowDetails;
@@ -94,6 +99,7 @@ exports.getTVShowDetails = getTVShowDetails;
 // @route GET /tv-shows/:tvShowId/season/:season
 // @access Public
 const getTVShowSeasonDetails = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _e;
     const user = req.user;
     const { tvShowId, season } = req.params;
     try {
@@ -114,7 +120,8 @@ const getTVShowSeasonDetails = (0, express_async_handler_1.default)((req, res) =
         res.json(seasonsDetails.episodes);
     }
     catch (error) {
-        throw new Error(error.message || 'Error with TMBD API');
+        res.status(((_e = error.response) === null || _e === void 0 ? void 0 : _e.status) || 500);
+        throw new Error(error.message || 'Internal Server Error');
     }
 }));
 exports.getTVShowSeasonDetails = getTVShowSeasonDetails;

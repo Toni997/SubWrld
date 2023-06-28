@@ -26,7 +26,7 @@
             color="primary"
             label="Log in"
             class="q-mt-md"
-            :disabled="authStore.isLoading"
+            :loading="auth.isLoading"
           />
         </q-form>
       </q-card-section>
@@ -44,26 +44,27 @@
 <script lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth-store'
+import { useQuasar } from 'quasar'
 
 export default {
   setup() {
+    const auth = useAuthStore()
     const username = ref('')
     const password = ref('')
     const errorMessage = ref('')
-    const authStore = useAuthStore()
 
     const onLoginSubmit = async () => {
       username.value = username.value.trim()
       errorMessage.value = ''
       try {
-        await authStore.login(username.value, password.value)
+        await auth.login(username.value, password.value)
       } catch (error: any) {
         errorMessage.value = error.message
       }
     }
 
     return {
-      authStore,
+      auth,
       username,
       password,
       onLoginSubmit,

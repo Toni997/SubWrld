@@ -34,6 +34,8 @@ const watchlistSchema = new Schema(
   }
 )
 
+watchlistSchema.index({ userId: 1, tvSHowId: 1 })
+
 const Watchlist = model<IWatchlist>('Watchlist', watchlistSchema)
 
 export default Watchlist

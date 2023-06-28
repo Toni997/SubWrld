@@ -1,5 +1,5 @@
 import { Request } from 'express'
-import { IUser, IUpdateUser, IUserWithWatchlist } from '../models/user'
+import { IUser, IUpdateUser } from '../models/user'
 
 export interface IGetUserRequest extends Request {
   user?: IUser
