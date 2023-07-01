@@ -16,7 +16,7 @@
       <q-dialog v-model="isSubtitleRequestsListDialogShows" maximized>
         <subtitle-requests-list
           :episode="episodeForDialog"
-          @close-dialog="isSubtitleRequestsListDialogShows = false"
+          @closed="episodeForDialog.justAddedSubtitleRequestId = null"
         />
       </q-dialog>
       <q-dialog v-model="markWatchedDialog">
@@ -340,7 +340,7 @@ export default defineComponent({
     const episodeForDialog = reactive<ITVShowEpisodeForDialog>({
       details: null,
       tvShowId: null,
-      justAddedId: null,
+      justAddedSubtitleRequestId: null,
     })
 
     onMounted(async () => {

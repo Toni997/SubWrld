@@ -24,7 +24,15 @@
     </q-banner>
     <q-card-section class="header">
       <h5 class="q-ma-none">Subtitle Requests</h5>
-      <q-btn round flat icon="close" color="red" size="1.2rem" v-close-popup />
+      <q-btn
+        round
+        flat
+        icon="close"
+        color="red"
+        size="1.2rem"
+        v-close-popup
+        @click="$emit('closed')"
+      />
     </q-card-section>
     <q-card-section>
       <p class="text-body1">
