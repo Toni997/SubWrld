@@ -25,6 +25,9 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const multer_1 = require("../config/multer");
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
+// @desc Add subtitle
+// @route POST /subtitles
+// @access Private
 const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
     const subtitle = req.body;
@@ -54,7 +57,7 @@ const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter
             : null,
         filePath: null,
     };
-    if (files) {
+    if (files === null || files === void 0 ? void 0 : files.length) {
         const zipFileName = (0, uuid_1.v4)() + '.zip';
         const zipFilePath = path_1.default.join(multer_1.subtitlesFolderPath, zipFileName);
         subtitleToInsert.filePath = zipFileName;
@@ -71,7 +74,6 @@ const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter
     }
     const insertedSubtitle = yield subtitle_1.default.create(subtitleToInsert);
     res.status(201).json(insertedSubtitle);
-    console.log('hey');
     if (!files)
         return;
     for (const file of files) {
@@ -80,6 +82,9 @@ const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter
     }
 }));
 exports.addSubtitle = addSubtitle;
+// @desc download subtitle
+// @route GET /subtitles/:subtitleId
+// @access Public
 const downloadSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const subtitleId = req.params.subtitleId;
     const subtitle = yield subtitle_1.default.findById(subtitleId);
@@ -91,9 +96,8 @@ const downloadSubtitle = (0, express_async_handler_1.default)((req, res) => __aw
         .replace(/[^a-zA-Z0-9]/g, ' ')
         .replace(/\s+/g, '.');
     const seasonAndEpisode = `S${subtitle.season}E${subtitle.episode}`;
-    const lang = subtitle.language;
     const extension = 'zip';
-    const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${lang}.${extension}`;
+    const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${subtitle.language}.${extension}`;
     const filePath = path_1.default.join(multer_1.subtitlesFolderPath, subtitle.filePath);
     res.download(filePath, fullDownloadFileName, err => {
         if (err)
@@ -101,6 +105,9 @@ const downloadSubtitle = (0, express_async_handler_1.default)((req, res) => __aw
     });
 }));
 exports.downloadSubtitle = downloadSubtitle;
+// @desc add subtite request
+// @route POST /subtitles/requests
+// @access Public
 const addSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const user = req.user;
@@ -114,14 +121,15 @@ const addSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __
     res.status(201).json(insertedSubtitleRequest);
 }));
 exports.addSubtitleRequest = addSubtitleRequest;
+// @desc get all subtitle requests for a specific episode
+// @route GET /subtitles/requests/:episodeId
+// @access Public
 const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _b;
     const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b._id;
     const episodeId = Number(req.params.episodeId);
-    if (!episodeId) {
-        res.status(400);
-        throw new Error('Invalid parameter');
-    }
+    if (!episodeId)
+        throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
     const subtitleRequests = yield subtitleRequest_1.default.aggregate([
         {
             $match: { episodeId }, // Replace epsidoeid with the specific episodeId
@@ -162,18 +170,19 @@ const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req,
     res.json(subtitleRequests);
 }));
 exports.getSubtitleRequestsForEpisode = getSubtitleRequestsForEpisode;
+// @desc delete a subtitle request
+// @route DELETE /subtitles/requests/:requestId
+// @access Private
 const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _c, _d;
     const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c._id;
     const isAdmin = (_d = req.user) === null || _d === void 0 ? void 0 : _d.isAdmin;
     const requestId = req.params.requestId;
     const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
-    if (!subtitleRequest) {
+    if (!subtitleRequest)
         throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
-    }
-    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin) {
+    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin)
         throw new errorMiddleware_1.CustomError('Not authorized', 401);
-    }
     yield subtitleRequest.deleteOne();
     res.json('Removed subtitle request');
 }));

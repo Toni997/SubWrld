@@ -24,11 +24,9 @@ const subtitleValidator = joi_1.default.object({
     forHearingImpaired: joi_1.default.boolean().required(),
     release: joi_1.default.string()
         .max(50)
-        .trim()
-        .strict()
         .min(3)
         .regex(/^(?![-.])(?!.*--)(?!.*\.\.)(?!.*[-.]$)[a-zA-Z0-9.-]+$/)
-        .message('release can only contain letters, numbers, - and . (no consecutive - or . nor at the beginning or end)')
+        .message('release can only contain letters, numbers, - and . (no consecutive - or . nor at the beginning or the end)')
         .required(),
     subtitleRequestId: joi_1.default.string().allow(null),
     isWorkInProgress: joi_1.default.boolean().required(),

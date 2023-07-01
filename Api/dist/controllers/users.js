@@ -22,8 +22,9 @@ const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const watchedEpisodesValidator_1 = require("../middleware/validators/watchedEpisodesValidator");
 const watchedEpisodes_1 = __importDefault(require("../models/watchedEpisodes"));
+const errorMiddleware_1 = require("../middleware/errorMiddleware");
 // @desc Auth user & get token
-// @route POST /api/users/login
+// @route POST /users/login
 // @access Public
 const loginUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
@@ -39,26 +40,21 @@ const loginUser = (0, express_async_handler_1.default)((req, res) => __awaiter(v
         });
     }
     else {
-        res.status(401);
-        throw new Error('Invalid email or password');
+        throw new errorMiddleware_1.CustomError('Invalid email or password', 401);
     }
 }));
 exports.loginUser = loginUser;
 // @desc Register a new user
-// @route POST /api/users
+// @route POST /users
 // @access Public
 const signupUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, email, password } = req.body;
     const usernameExists = yield user_1.default.findOne({ username });
-    if (usernameExists) {
-        res.status(400);
-        throw new Error('Username already exists');
-    }
+    if (usernameExists)
+        throw new errorMiddleware_1.CustomError('Username already exists', 400);
     const emailExists = yield user_1.default.findOne({ email });
-    if (emailExists) {
-        res.status(400);
-        throw new Error('Email already exists');
-    }
+    if (emailExists)
+        throw new errorMiddleware_1.CustomError('Email already exists', 400);
     const user = yield user_1.default.create({
         username,
         email,
@@ -73,13 +69,12 @@ const signupUser = (0, express_async_handler_1.default)((req, res) => __awaiter(
         });
     }
     else {
-        res.status(400);
-        throw new Error('Invalid user data');
+        throw new errorMiddleware_1.CustomError('Invalid user data', 400);
     }
 }));
 exports.signupUser = signupUser;
-// @desc Get user profile
-// @route GET /api/users/profile
+// @desc Update user
+// @route PUT /users
 // @access Private
 const updateUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -100,13 +95,12 @@ const updateUser = (0, express_async_handler_1.default)((req, res) => __awaiter(
         });
     }
     else {
-        res.status(404);
-        throw new Error('User not found');
+        throw new errorMiddleware_1.CustomError('User not found', 404);
     }
 }));
 exports.updateUser = updateUser;
-// @desc Get user profile
-// @route GET /api/users/:userId
+// @desc Get user
+// @route GET /users/:userId
 // @access Public
 const getUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield user_1.default.findById(req.params.userId).select('-password -watchlist');
@@ -114,74 +108,54 @@ const getUser = (0, express_async_handler_1.default)((req, res) => __awaiter(voi
         res.json(user);
     }
     else {
-        res.status(404);
-        throw new Error('User not found');
+        throw new errorMiddleware_1.CustomError('User not found', 404);
     }
 }));
 exports.getUser = getUser;
 // @desc Get user watchlist
-// @route GET /api/users/watchlist
+// @route GET /users/watchlist
 // @access Private
 const getWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b, _c;
+    var _b;
     const watchlist = yield watchlist_1.default.find({
         userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id,
     }).lean();
-    try {
-        for (const item of watchlist) {
-            const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.tvShowId));
-            const tvShow = response.data;
-            item.title = tvShow.name;
-            item.next_episode_to_air = tvShow.next_episode_to_air;
-            item.status = tvShow.status;
-        }
-    }
-    catch (error) {
-        res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
-        throw new Error(error.message || 'Error occurred');
+    for (const item of watchlist) {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.tvShowId));
+        const tvShow = response.data;
+        item.title = tvShow.name;
+        item.next_episode_to_air = tvShow.next_episode_to_air;
+        item.status = tvShow.status;
     }
     res.json(watchlist);
 }));
 exports.getWatchlist = getWatchlist;
 // @desc check if user has watchlisted a tv show
-// @route GET /api/users/watchlisted/:tvShowId
+// @route GET /users/watchlisted/:tvShowId
 // @access Private
 const checkWatchlisted = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
+    var _c;
     const watchlisted = yield watchlist_1.default.findOne({
-        userId: (_d = req.user) === null || _d === void 0 ? void 0 : _d._id,
+        userId: (_c = req.user) === null || _c === void 0 ? void 0 : _c._id,
         tvShowId: req.params.tvShowId,
     });
     res.json(!!watchlisted);
 }));
 exports.checkWatchlisted = checkWatchlisted;
 // @desc add tv show to watchlist
-// @route POST /api/users/watchlist/:tvShowId
+// @route POST /users/watchlist/:tvShowId
 // @access Private
 const addToWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e, _f;
-    const userId = new mongoose_1.default.Types.ObjectId((_e = req.user) === null || _e === void 0 ? void 0 : _e._id);
+    var _d;
+    const userId = new mongoose_1.default.Types.ObjectId((_d = req.user) === null || _d === void 0 ? void 0 : _d._id);
     const tvShowId = Number(req.params.tvShowId);
     const watchlisted = yield watchlist_1.default.findOne({
         userId,
         tvShowId,
     });
-    try {
-        yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(tvShowId));
-    }
-    catch (error) {
-        if (error.response) {
-            res.status(error.response.status).json(error.response.statusText);
-        }
-        else {
-            res.status(((_f = error.response) === null || _f === void 0 ? void 0 : _f.status) || 500);
-            throw new Error(error.message || 'Error occurred');
-        }
-    }
-    if (watchlisted) {
-        res.status(422);
-        throw new Error('You have already watchlisted this show');
-    }
+    yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(tvShowId));
+    if (watchlisted)
+        throw new errorMiddleware_1.CustomError('You have already watchlisted this show', 422);
     const insertedWatchlist = yield watchlist_1.default.create({
         userId,
         tvShowId,
@@ -193,8 +167,8 @@ exports.addToWatchlist = addToWatchlist;
 // @route DELETE /api/users/watchlist/:tvShowId
 // @access Private
 const removeFromWatchlist = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g;
-    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
+    var _e;
+    const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e._id;
     const { tvShowIds } = req.body;
     const watchlistedToInsert = [];
     for (const tvShowId of tvShowIds) {
@@ -218,9 +192,9 @@ exports.removeFromWatchlist = removeFromWatchlist;
 // @route GET /api/users/watched/:episodeId
 // @access Private
 const checkEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h;
+    var _f;
     const watchedEpisode = yield watchedEpisodes_1.default.findOne({
-        userId: (_h = req.user) === null || _h === void 0 ? void 0 : _h._id,
+        userId: (_f = req.user) === null || _f === void 0 ? void 0 : _f._id,
         episodeId: req.params.episodeId,
     });
     res.json(!!watchedEpisode);
@@ -235,9 +209,8 @@ const handleMarkWatched = (userId, tvShowId, watched, alreadyWatchedEpisodes, wa
     const season = watched.season;
     const episodes = watched.episodes;
     const { error } = watchedEpisodesValidator_1.markWatchedEpisodesValidator.validate(watched);
-    if (error) {
-        throw new Error(error.message);
-    }
+    if (error)
+        throw new errorMiddleware_1.CustomError(error.details[0].message, 400);
     if (episodes === null) {
         const seasonEpisodes = yield fetchSeasonEpisodes(tvShowId, season);
         for (const episodeDetails of seasonEpisodes) {
@@ -287,68 +260,53 @@ const handleMarkWatched = (userId, tvShowId, watched, alreadyWatchedEpisodes, wa
         }
     }
 });
-// @desc add tv show to watchlist
-// @route POST /api/users/watchlist/:tvShowId
+// @desc mark episode as watched
+// @route POST /users/mark-watched
 // @access Private
 const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _j, _k, _l;
-    const userId = new mongoose_1.default.Types.ObjectId((_j = req.user) === null || _j === void 0 ? void 0 : _j._id);
+    var _g;
+    const userId = new mongoose_1.default.Types.ObjectId((_g = req.user) === null || _g === void 0 ? void 0 : _g._id);
     const markWatched = req.body;
     const watchedEpisodesToInsert = [];
-    try {
-        yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(markWatched.tvShowId));
-    }
-    catch (error) {
-        res.status(((_k = error.response) === null || _k === void 0 ? void 0 : _k.status) || 500);
-        throw new Error(error.message || 'Error occurred');
-    }
+    yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(markWatched.tvShowId));
     const alreadyWatchedEpisodes = yield watchedEpisodes_1.default.find({
         userId,
         tvShowId: markWatched.tvShowId,
     });
-    try {
-        for (const watched of markWatched.watched) {
-            console.log(watched.season);
-            const alreadyWatchedEpisodesInASeason = alreadyWatchedEpisodes.filter(w => w.season === watched.season);
-            yield handleMarkWatched(userId, markWatched.tvShowId, watched, alreadyWatchedEpisodesInASeason, watchedEpisodesToInsert);
-        }
-        if (watchedEpisodesToInsert.length) {
-            yield watchedEpisodes_1.default.insertMany(watchedEpisodesToInsert);
-            res
-                .status(201)
-                .json(`Added ${watchedEpisodesToInsert.length} watched episodes`);
-        }
-        else {
-            res.status(200).json('All episodes have already been marked as watched');
-        }
+    for (const watched of markWatched.watched) {
+        const alreadyWatchedEpisodesInASeason = alreadyWatchedEpisodes.filter(w => w.season === watched.season);
+        yield handleMarkWatched(userId, markWatched.tvShowId, watched, alreadyWatchedEpisodesInASeason, watchedEpisodesToInsert);
     }
-    catch (error) {
-        res.status(((_l = error.response) === null || _l === void 0 ? void 0 : _l.status) || 500);
-        throw new Error(error.message || 'Error occurred');
+    if (watchedEpisodesToInsert.length) {
+        yield watchedEpisodes_1.default.insertMany(watchedEpisodesToInsert);
+        res
+            .status(201)
+            .json(`Added ${watchedEpisodesToInsert.length} watched episodes`);
+    }
+    else {
+        res.status(200).json('All episodes have already been marked as watched');
     }
 }));
 exports.markEpisodeWatched = markEpisodeWatched;
 // @desc remove episode from watched
-// @route DELETE /api/users/watched/:episodeId
+// @route DELETE /users/watched/:episodeId
 // @access Private
 const removeEpisodeFromWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _m;
-    const userId = (_m = req.user) === null || _m === void 0 ? void 0 : _m._id;
+    var _h;
+    const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h._id;
     const episodeId = Number(req.params.episodeId);
     const watchedEpisode = yield watchedEpisodes_1.default.findOne({
         userId,
         episodeId,
     });
-    if (!watchedEpisode) {
-        res.status(422);
-        throw new Error("You haven't marked this episode as watched yet");
-    }
+    if (!watchedEpisode)
+        throw new errorMiddleware_1.CustomError("You haven't marked this episode as watched yet", 422);
     yield watchedEpisode.deleteOne();
     res.json('Removed from watched episodes');
 }));
 exports.removeEpisodeFromWatched = removeEpisodeFromWatched;
 // @desc set dark mode
-// @route PATCH /api/set-dark-mode
+// @route PATCH /users/set-dark-mode
 // @access Private
 const setDarkMode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { darkMode } = req.body;

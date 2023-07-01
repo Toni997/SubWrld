@@ -3,11 +3,11 @@ import { markWatchedValidator } from './validators/watchedEpisodesValidator'
 import { removeFromWatchlistValidator } from './validators/watchlistValidator'
 import { subtitleRequestValidator } from './validators/subtitleRequestValidator'
 import { setDarkModeValidator } from './validators/setDarkModeValidator'
-import { subtitleValidator } from './validators/subtitleValidator'
+import { CustomError } from './errorMiddleware'
 
 const validateMarkWatched = (req: Request, res: Response, next: () => void) => {
   const { error } = markWatchedValidator.validate(req.body)
-  if (error) return res.status(400).json({ error: error.details[0].message })
+  if (error) throw new CustomError(error.details[0].message, 400)
   next()
 }
 
@@ -17,7 +17,7 @@ const validateRemoveFromWatchlist = (
   next: () => void
 ) => {
   const { error } = removeFromWatchlistValidator.validate(req.body)
-  if (error) return res.status(400).json({ error: error.details[0].message })
+  if (error) throw new CustomError(error.details[0].message, 400)
   next()
 }
 
@@ -27,13 +27,13 @@ const validateSubtitleRequest = (
   next: () => void
 ) => {
   const { error } = subtitleRequestValidator.validate(req.body)
-  if (error) return res.status(400).json({ error: error.details[0].message })
+  if (error) throw new CustomError(error.details[0].message, 400)
   next()
 }
 
 const validateSetDarkMode = (req: Request, res: Response, next: () => void) => {
   const { error } = setDarkModeValidator.validate(req.body)
-  if (error) return res.status(400).json({ error: error.details[0].message })
+  if (error) throw new CustomError(error.details[0].message, 400)
   next()
 }
 

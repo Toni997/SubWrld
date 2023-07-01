@@ -2,6 +2,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken'
 import asyncHandler from 'express-async-handler'
 import User, { IUser } from '../models/user'
 import { IAuthUserRequest } from '../interfaces/request'
+import { CustomError } from './errorMiddleware'
 
 const authenticate = asyncHandler(async (req: IAuthUserRequest, res, next) => {
   let token
@@ -16,21 +17,15 @@ const authenticate = asyncHandler(async (req: IAuthUserRequest, res, next) => {
         process.env.JWT_SECRET as jwt.Secret
       ) as JwtPayload
 
-      req.user = (await User.findById(decoded._id).select(
-        '-password -watchlist -watchedEpisodes'
-      )) as IUser
+      req.user = (await User.findById(decoded._id).select('-password')) as IUser
       next()
     } catch (error) {
       console.error(error)
-      res.status(401)
-      throw new Error('Not authorized, token failed')
+      throw new CustomError('Not authorized, token failed', 401)
     }
   }
 
-  if (!token) {
-    res.status(401)
-    throw new Error('Not authorized, no token')
-  }
+  if (!token) throw new CustomError('Not authorized, no token', 401)
 })
 
 const passUserToRequest = asyncHandler(
@@ -48,7 +43,7 @@ const passUserToRequest = asyncHandler(
         ) as JwtPayload
 
         req.user = (await User.findById(decoded._id).select(
-          '-password -watchlist -watchedEpisodes'
+          '-password'
         )) as IUser
       } catch (error) {
         console.error(error)

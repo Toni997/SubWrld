@@ -24,9 +24,10 @@ import WatchedEpisode, {
   IUpdateWatchedEpisode,
   IWatchedEpisode,
 } from '../models/watchedEpisodes'
+import { CustomError } from '../middleware/errorMiddleware'
 
 // @desc Auth user & get token
-// @route POST /api/users/login
+// @route POST /users/login
 // @access Public
 const loginUser = asyncHandler(async (req: Request, res: Response) => {
   const { username, password } = req.body
@@ -43,30 +44,23 @@ const loginUser = asyncHandler(async (req: Request, res: Response) => {
       token: generateToken(user),
     })
   } else {
-    res.status(401)
-    throw new Error('Invalid email or password')
+    throw new CustomError('Invalid email or password', 401)
   }
 })
 
 // @desc Register a new user
-// @route POST /api/users
+// @route POST /users
 // @access Public
 const signupUser = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body
 
   const usernameExists = await User.findOne({ username })
 
-  if (usernameExists) {
-    res.status(400)
-    throw new Error('Username already exists')
-  }
+  if (usernameExists) throw new CustomError('Username already exists', 400)
 
   const emailExists = await User.findOne({ email })
 
-  if (emailExists) {
-    res.status(400)
-    throw new Error('Email already exists')
-  }
+  if (emailExists) throw new CustomError('Email already exists', 400)
 
   const user = await User.create({
     username,
@@ -82,13 +76,12 @@ const signupUser = asyncHandler(async (req: Request, res: Response) => {
       token: generateToken(user),
     })
   } else {
-    res.status(400)
-    throw new Error('Invalid user data')
+    throw new CustomError('Invalid user data', 400)
   }
 })
 
-// @desc Get user profile
-// @route GET /api/users/profile
+// @desc Update user
+// @route PUT /users
 // @access Private
 const updateUser = asyncHandler(
   async (req: IUpdateUserRequest, res: Response) => {
@@ -111,14 +104,13 @@ const updateUser = asyncHandler(
         token: generateToken(updatedUser),
       })
     } else {
-      res.status(404)
-      throw new Error('User not found')
+      throw new CustomError('User not found', 404)
     }
   }
 )
 
-// @desc Get user profile
-// @route GET /api/users/:userId
+// @desc Get user
+// @route GET /users/:userId
 // @access Public
 const getUser = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.params.userId).select(
@@ -128,37 +120,33 @@ const getUser = asyncHandler(async (req: Request, res: Response) => {
   if (user) {
     res.json(user)
   } else {
-    res.status(404)
-    throw new Error('User not found')
+    throw new CustomError('User not found', 404)
   }
 })
 
 // @desc Get user watchlist
-// @route GET /api/users/watchlist
+// @route GET /users/watchlist
 // @access Private
 const getWatchlist = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const watchlist: IWatchlistWithTVShowDetails[] = await Watchlist.find({
       userId: req.user?._id,
     }).lean()
-    try {
-      for (const item of watchlist) {
-        const response = await axios.get(getTVShowDetailsUrl(item.tvShowId))
-        const tvShow: ITVShowDetails = response.data
-        item.title = tvShow.name
-        item.next_episode_to_air = tvShow.next_episode_to_air
-        item.status = tvShow.status
-      }
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error occurred')
+
+    for (const item of watchlist) {
+      const response = await axios.get(getTVShowDetailsUrl(item.tvShowId))
+      const tvShow: ITVShowDetails = response.data
+      item.title = tvShow.name
+      item.next_episode_to_air = tvShow.next_episode_to_air
+      item.status = tvShow.status
     }
+
     res.json(watchlist)
   }
 )
 
 // @desc check if user has watchlisted a tv show
-// @route GET /api/users/watchlisted/:tvShowId
+// @route GET /users/watchlisted/:tvShowId
 // @access Private
 const checkWatchlisted = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
@@ -171,7 +159,7 @@ const checkWatchlisted = asyncHandler(
 )
 
 // @desc add tv show to watchlist
-// @route POST /api/users/watchlist/:tvShowId
+// @route POST /users/watchlist/:tvShowId
 // @access Private
 const addToWatchlist = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
@@ -183,21 +171,10 @@ const addToWatchlist = asyncHandler(
       tvShowId,
     })
 
-    try {
-      await axios.get(getTVShowDetailsUrl(tvShowId))
-    } catch (error: any) {
-      if (error.response) {
-        res.status(error.response.status).json(error.response.statusText)
-      } else {
-        res.status(error.response?.status || 500)
-        throw new Error(error.message || 'Error occurred')
-      }
-    }
+    await axios.get(getTVShowDetailsUrl(tvShowId))
 
-    if (watchlisted) {
-      res.status(422)
-      throw new Error('You have already watchlisted this show')
-    }
+    if (watchlisted)
+      throw new CustomError('You have already watchlisted this show', 422)
 
     const insertedWatchlist = await Watchlist.create({
       userId,
@@ -273,9 +250,7 @@ const handleMarkWatched = async (
   const episodes = watched.episodes
 
   const { error } = markWatchedEpisodesValidator.validate(watched)
-  if (error) {
-    throw new Error(error.message)
-  }
+  if (error) throw new CustomError(error.details[0].message, 400)
 
   if (episodes === null) {
     const seasonEpisodes = await fetchSeasonEpisodes(tvShowId, season)
@@ -336,8 +311,8 @@ const handleMarkWatched = async (
   }
 }
 
-// @desc add tv show to watchlist
-// @route POST /api/users/watchlist/:tvShowId
+// @desc mark episode as watched
+// @route POST /users/mark-watched
 // @access Private
 const markEpisodeWatched = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
@@ -345,51 +320,40 @@ const markEpisodeWatched = asyncHandler(
     const markWatched: IMarkWatched = req.body
     const watchedEpisodesToInsert: IUpdateWatchedEpisode[] = []
 
-    try {
-      await axios.get(getTVShowDetailsUrl(markWatched.tvShowId))
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error occurred')
-    }
+    await axios.get(getTVShowDetailsUrl(markWatched.tvShowId))
 
     const alreadyWatchedEpisodes = await WatchedEpisode.find({
       userId,
       tvShowId: markWatched.tvShowId,
     })
 
-    try {
-      for (const watched of markWatched.watched) {
-        console.log(watched.season)
-        const alreadyWatchedEpisodesInASeason = alreadyWatchedEpisodes.filter(
-          w => w.season === watched.season
-        ) as IWatchedEpisode[]
+    for (const watched of markWatched.watched) {
+      const alreadyWatchedEpisodesInASeason = alreadyWatchedEpisodes.filter(
+        w => w.season === watched.season
+      ) as IWatchedEpisode[]
 
-        await handleMarkWatched(
-          userId,
-          markWatched.tvShowId,
-          watched,
-          alreadyWatchedEpisodesInASeason,
-          watchedEpisodesToInsert
-        )
-      }
+      await handleMarkWatched(
+        userId,
+        markWatched.tvShowId,
+        watched,
+        alreadyWatchedEpisodesInASeason,
+        watchedEpisodesToInsert
+      )
+    }
 
-      if (watchedEpisodesToInsert.length) {
-        await WatchedEpisode.insertMany(watchedEpisodesToInsert)
-        res
-          .status(201)
-          .json(`Added ${watchedEpisodesToInsert.length} watched episodes`)
-      } else {
-        res.status(200).json('All episodes have already been marked as watched')
-      }
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error occurred')
+    if (watchedEpisodesToInsert.length) {
+      await WatchedEpisode.insertMany(watchedEpisodesToInsert)
+      res
+        .status(201)
+        .json(`Added ${watchedEpisodesToInsert.length} watched episodes`)
+    } else {
+      res.status(200).json('All episodes have already been marked as watched')
     }
   }
 )
 
 // @desc remove episode from watched
-// @route DELETE /api/users/watched/:episodeId
+// @route DELETE /users/watched/:episodeId
 // @access Private
 const removeEpisodeFromWatched = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
@@ -401,10 +365,11 @@ const removeEpisodeFromWatched = asyncHandler(
       episodeId,
     })
 
-    if (!watchedEpisode) {
-      res.status(422)
-      throw new Error("You haven't marked this episode as watched yet")
-    }
+    if (!watchedEpisode)
+      throw new CustomError(
+        "You haven't marked this episode as watched yet",
+        422
+      )
 
     await watchedEpisode.deleteOne()
 
@@ -413,7 +378,7 @@ const removeEpisodeFromWatched = asyncHandler(
 )
 
 // @desc set dark mode
-// @route PATCH /api/set-dark-mode
+// @route PATCH /users/set-dark-mode
 // @access Private
 const setDarkMode = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {

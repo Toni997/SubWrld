@@ -18,7 +18,6 @@ const notFound = (req, res, next) => {
 exports.notFound = notFound;
 const errorHandler = (err, req, res, next) => {
     var _a;
-    console.log(res.statusCode);
     const statusCode = err.statusCode ||
         ((_a = err.response) === null || _a === void 0 ? void 0 : _a.status) ||
         (res.statusCode === 200 ? 500 : res.statusCode);

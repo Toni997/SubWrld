@@ -20,6 +20,9 @@ import path from 'path'
 import { subtitlesFolderPath, tempFolderPath } from '../config/multer'
 import { CustomError } from '../middleware/errorMiddleware'
 
+// @desc Add subtitle
+// @route POST /subtitles
+// @access Private
 const addSubtitle = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const user = req.user as IUser
@@ -62,7 +65,7 @@ const addSubtitle = asyncHandler(
       filePath: null,
     }
 
-    if (files) {
+    if (files?.length) {
       const zipFileName = uuidv4() + '.zip'
       const zipFilePath = path.join(subtitlesFolderPath, zipFileName)
       subtitleToInsert.filePath = zipFileName
@@ -74,6 +77,7 @@ const addSubtitle = asyncHandler(
       })
 
       archive.pipe(output)
+
       for (const file of files) {
         const filePath = path.join(tempFolderPath, file.filename)
         archive.file(filePath, { name: file.originalname })
@@ -85,8 +89,9 @@ const addSubtitle = asyncHandler(
     const insertedSubtitle = await Subtitle.create(subtitleToInsert)
 
     res.status(201).json(insertedSubtitle)
-    console.log('hey')
+
     if (!files) return
+
     for (const file of files) {
       const filePath = path.join(tempFolderPath, file.filename)
       fs.unlinkSync(filePath)
@@ -94,6 +99,9 @@ const addSubtitle = asyncHandler(
   }
 )
 
+// @desc download subtitle
+// @route GET /subtitles/:subtitleId
+// @access Public
 const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
   const subtitleId = req.params.subtitleId
   const subtitle = await Subtitle.findById(subtitleId)
@@ -103,14 +111,14 @@ const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
 
   const response = await axios.get(getTVShowDetailsUrl(subtitle.tvShowId))
   const tvShowDetails: ITVShowDetails = response.data
+
   const tvShowName = tvShowDetails.name
     .replace(/[^a-zA-Z0-9]/g, ' ')
     .replace(/\s+/g, '.')
   const seasonAndEpisode = `S${subtitle.season}E${subtitle.episode}`
-  const lang = subtitle.language
   const extension = 'zip'
 
-  const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${lang}.${extension}`
+  const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${subtitle.language}.${extension}`
   const filePath = path.join(subtitlesFolderPath, subtitle.filePath)
 
   res.download(filePath, fullDownloadFileName, err => {
@@ -118,6 +126,9 @@ const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
   })
 })
 
+// @desc add subtite request
+// @route POST /subtitles/requests
+// @access Public
 const addSubtitleRequest = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const user = req.user as IUser
@@ -144,15 +155,15 @@ const addSubtitleRequest = asyncHandler(
   }
 )
 
+// @desc get all subtitle requests for a specific episode
+// @route GET /subtitles/requests/:episodeId
+// @access Public
 const getSubtitleRequestsForEpisode = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const userId = req.user?._id
     const episodeId = Number(req.params.episodeId)
 
-    if (!episodeId) {
-      res.status(400)
-      throw new Error('Invalid parameter')
-    }
+    if (!episodeId) throw new CustomError('Invalid parameter', 400)
 
     const subtitleRequests = await SubtitleRequest.aggregate([
       {
@@ -197,6 +208,9 @@ const getSubtitleRequestsForEpisode = asyncHandler(
   }
 )
 
+// @desc delete a subtitle request
+// @route DELETE /subtitles/requests/:requestId
+// @access Private
 const deleteSubtitleRequest = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const userId = req.user?._id as mongoose.Types.ObjectId
@@ -205,13 +219,11 @@ const deleteSubtitleRequest = asyncHandler(
 
     const subtitleRequest = await SubtitleRequest.findById(requestId)
 
-    if (!subtitleRequest) {
+    if (!subtitleRequest)
       throw new CustomError('Subtitle request not found', 404)
-    }
 
-    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin) {
+    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin)
       throw new CustomError('Not authorized', 401)
-    }
 
     await subtitleRequest.deleteOne()
 

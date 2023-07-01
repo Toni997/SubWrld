@@ -8,14 +8,9 @@ import {
   getTVShowDetailsUrl,
   getTVShowSeasonDetailsUrl,
 } from '../utils/tmdb-api'
-import {
-  ITVShowDetails,
-  ITVShowEpisode,
-  ITVShowSeason,
-} from '../interfaces/tv-shows'
+import { ITVShowDetails, ITVShowSeason } from '../interfaces/tv-shows'
 import { IAuthUserRequest } from '../interfaces/request'
-import WatchedEpisode, { IWatchedEpisode } from '../models/watchedEpisodes'
-import { checkWatchlisted } from './users'
+import WatchedEpisode from '../models/watchedEpisodes'
 import Watchlist from '../models/watchlist'
 
 const limitNumberOfResults = 10
@@ -46,36 +41,26 @@ const searchTVShows = asyncHandler(async (req: Request, res: Response) => {
     throw new Error('Search keyword should be at least 1 character long')
   }
 
-  try {
-    const response = await axios.get(getSearchTVShowUrl(keyword))
+  const response = await axios.get(getSearchTVShowUrl(keyword))
 
-    let shows: [] = response.data.results
-    shows = shows.slice(0, limitNumberOfResults) as []
-    await addGenreNamesToShowsArray(shows)
+  let shows: [] = response.data.results
+  shows = shows.slice(0, limitNumberOfResults) as []
+  await addGenreNamesToShowsArray(shows)
 
-    res.json(shows)
-  } catch (error: any) {
-    res.status(error.response?.status || 500)
-    throw new Error(error.message || 'Error occurred')
-  }
+  res.json(shows)
 })
 
 // @desc Get popular TV shows
 // @route GET /tv-shows/popular
 // @access Public
 const popularTVShows = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const response = await axios.get(popularTVShowsUrl)
+  const response = await axios.get(popularTVShowsUrl)
 
-    let shows: [] = response.data.results
-    shows = shows.slice(0, limitNumberOfResults) as []
-    await addGenreNamesToShowsArray(shows)
+  let shows: [] = response.data.results
+  shows = shows.slice(0, limitNumberOfResults) as []
+  await addGenreNamesToShowsArray(shows)
 
-    res.json(shows)
-  } catch (error: any) {
-    res.status(error.response?.status || 500)
-    throw new Error(error.message || 'Error occurred')
-  }
+  res.json(shows)
 })
 
 // @desc Get TV show details
@@ -85,26 +70,22 @@ const getTVShowDetails = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const user = req.user
     const { tvShowId } = req.params
-    try {
-      const response = await axios.get(getTVShowDetailsUrl(tvShowId))
-      const tvShow: ITVShowDetails = response.data
 
-      if (!user) {
-        res.json(tvShow)
-        return
-      }
+    const response = await axios.get(getTVShowDetailsUrl(tvShowId))
+    const tvShow: ITVShowDetails = response.data
 
-      const watchlisted = await Watchlist.findOne({
-        userId: user._id,
-        tvShowId,
-      })
-
-      tvShow.is_watchlisted_by_user = !!watchlisted
+    if (!user) {
       res.json(tvShow)
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error occurred')
+      return
     }
+
+    const watchlisted = await Watchlist.findOne({
+      userId: user._id,
+      tvShowId,
+    })
+
+    tvShow.is_watchlisted_by_user = !!watchlisted
+    res.json(tvShow)
   }
 )
 
@@ -115,30 +96,30 @@ const getTVShowSeasonDetails = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const user = req.user
     const { tvShowId, season } = req.params
-    try {
-      const response = await axios.get(
-        getTVShowSeasonDetailsUrl(tvShowId, season)
-      )
-      const seasonsDetails: ITVShowSeason = response.data
-      if (!user) {
-        res.json(seasonsDetails.episodes)
-        return
-      }
-      const watchedEpisodesByUser = await WatchedEpisode.find({
-        userId: user._id,
-        tvShowId,
-      })
-      for (const episode of seasonsDetails.episodes) {
-        const isMarkedAsWatched = !!watchedEpisodesByUser.find(
-          w => w.episodeId === episode.id
-        )
-        episode.marked_as_watched = isMarkedAsWatched
-      }
+
+    const response = await axios.get(
+      getTVShowSeasonDetailsUrl(tvShowId, season)
+    )
+    const seasonsDetails: ITVShowSeason = response.data
+
+    if (!user) {
       res.json(seasonsDetails.episodes)
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error occurred')
+      return
     }
+
+    const watchedEpisodesByUser = await WatchedEpisode.find({
+      userId: user._id,
+      tvShowId,
+    })
+
+    for (const episode of seasonsDetails.episodes) {
+      const isMarkedAsWatched = !!watchedEpisodesByUser.find(
+        w => w.episodeId === episode.id
+      )
+      episode.marked_as_watched = isMarkedAsWatched
+    }
+
+    res.json(seasonsDetails.episodes)
   }
 )
 
