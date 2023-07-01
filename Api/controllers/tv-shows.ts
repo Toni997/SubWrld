@@ -56,7 +56,7 @@ const searchTVShows = asyncHandler(async (req: Request, res: Response) => {
     res.json(shows)
   } catch (error: any) {
     res.status(error.response?.status || 500)
-    throw new Error(error.message || 'Internal Server Error')
+    throw new Error(error.message || 'Error occurred')
   }
 })
 
@@ -74,7 +74,7 @@ const popularTVShows = asyncHandler(async (req: Request, res: Response) => {
     res.json(shows)
   } catch (error: any) {
     res.status(error.response?.status || 500)
-    throw new Error(error.message || 'Internal Server Error')
+    throw new Error(error.message || 'Error occurred')
   }
 })
 
@@ -103,7 +103,7 @@ const getTVShowDetails = asyncHandler(
       res.json(tvShow)
     } catch (error: any) {
       res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Internal Server Error')
+      throw new Error(error.message || 'Error occurred')
     }
   }
 )
@@ -137,7 +137,7 @@ const getTVShowSeasonDetails = asyncHandler(
       res.json(seasonsDetails.episodes)
     } catch (error: any) {
       res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Internal Server Error')
+      throw new Error(error.message || 'Error occurred')
     }
   }
 )

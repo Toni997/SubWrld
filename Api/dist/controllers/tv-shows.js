@@ -46,7 +46,7 @@ const searchTVShows = (0, express_async_handler_1.default)((req, res) => __await
     }
     catch (error) {
         res.status(((_b = error.response) === null || _b === void 0 ? void 0 : _b.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
 }));
 exports.searchTVShows = searchTVShows;
@@ -64,7 +64,7 @@ const popularTVShows = (0, express_async_handler_1.default)((req, res) => __awai
     }
     catch (error) {
         res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
 }));
 exports.popularTVShows = popularTVShows;
@@ -91,7 +91,7 @@ const getTVShowDetails = (0, express_async_handler_1.default)((req, res) => __aw
     }
     catch (error) {
         res.status(((_d = error.response) === null || _d === void 0 ? void 0 : _d.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
 }));
 exports.getTVShowDetails = getTVShowDetails;
@@ -121,7 +121,7 @@ const getTVShowSeasonDetails = (0, express_async_handler_1.default)((req, res) =
     }
     catch (error) {
         res.status(((_e = error.response) === null || _e === void 0 ? void 0 : _e.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
 }));
 exports.getTVShowSeasonDetails = getTVShowSeasonDetails;

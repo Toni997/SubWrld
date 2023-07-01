@@ -12,67 +12,111 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
+exports.downloadSubtitle = exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const subtitleRequest_1 = __importDefault(require("../models/subtitleRequest"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
+const mongoose_1 = __importDefault(require("mongoose"));
+const subtitle_1 = __importDefault(require("../models/subtitle"));
+const uuid_1 = require("uuid");
+const archiver_1 = __importDefault(require("archiver"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const multer_1 = require("../config/multer");
+const errorMiddleware_1 = require("../middleware/errorMiddleware");
 const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    if (!req.file) {
-        res.status(400);
-        throw new Error('File not supported');
-    }
     const user = req.user;
     const subtitle = req.body;
     const files = req.files;
-    try {
-        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitle.tvShowId, subtitle.season, subtitle.episode));
-        const episodeDetails = response.data;
-        subtitle.userId = user._id;
-        subtitle.episodeId = episodeDetails.id;
-        subtitle.release = subtitle.release.trim();
-        /*const zipFileName = uuidv4()
-        const output = fs.createWriteStream(zipFileName + '.zip')
-  
-        const archive = archiver('zip', {
-          zlib: { level: 9 }, // Set compression level (optional)
-        });
-      
-        // Pipe the archive stream to the output stream
-        archive.pipe(output);
-  
-        const insertedSubtitleRequest = await Subtitle.create(subtitle)*/
-        res.status(201).json(subtitle);
+    if (subtitle.subtitleRequestId) {
+        const foundRequest = yield subtitleRequest_1.default.findById(subtitle.subtitleRequestId);
+        if (!foundRequest)
+            throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
     }
-    catch (error) {
-        res.status(((_a = error.response) === null || _a === void 0 ? void 0 : _a.status) || 500);
-        throw new Error(error.message || 'Error with TMBD API');
+    const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitle.tvShowId, subtitle.season, subtitle.episode));
+    const episodeDetails = response.data;
+    const subtitleToInsert = {
+        userId: user._id,
+        tvShowId: Number(subtitle.tvShowId),
+        season: Number(subtitle.season),
+        episode: Number(subtitle.episode),
+        episodeId: episodeDetails.id,
+        language: subtitle.language,
+        frameRate: Number(subtitle.frameRate),
+        forHearingImpaired: Boolean(subtitle.forHearingImpaired),
+        isWorkInProgress: Boolean(subtitle.isWorkInProgress),
+        onlyForeignLanguage: Boolean(subtitle.onlyForeignLanguage),
+        uploaderIsAuthor: Boolean(subtitle.uploaderIsAuthor),
+        release: subtitle.release.replace(/\s+/g, ' '),
+        subtitleRequestId: subtitle.subtitleRequestId
+            ? new mongoose_1.default.Types.ObjectId(subtitle.subtitleRequestId)
+            : null,
+        filePath: null,
+    };
+    if (files) {
+        const zipFileName = (0, uuid_1.v4)() + '.zip';
+        const zipFilePath = path_1.default.join(multer_1.subtitlesFolderPath, zipFileName);
+        subtitleToInsert.filePath = zipFileName;
+        const output = fs_1.default.createWriteStream(zipFilePath);
+        const archive = (0, archiver_1.default)('zip', {
+            zlib: { level: 9 },
+        });
+        archive.pipe(output);
+        for (const file of files) {
+            const filePath = path_1.default.join(multer_1.tempFolderPath, file.filename);
+            archive.file(filePath, { name: file.originalname });
+        }
+        archive.finalize();
+    }
+    const insertedSubtitle = yield subtitle_1.default.create(subtitleToInsert);
+    res.status(201).json(insertedSubtitle);
+    console.log('hey');
+    if (!files)
+        return;
+    for (const file of files) {
+        const filePath = path_1.default.join(multer_1.tempFolderPath, file.filename);
+        fs_1.default.unlinkSync(filePath);
     }
 }));
 exports.addSubtitle = addSubtitle;
+const downloadSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const subtitleId = req.params.subtitleId;
+    const subtitle = yield subtitle_1.default.findById(subtitleId);
+    if (!subtitle || !subtitle.filePath)
+        throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
+    const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(subtitle.tvShowId));
+    const tvShowDetails = response.data;
+    const tvShowName = tvShowDetails.name
+        .replace(/[^a-zA-Z0-9]/g, ' ')
+        .replace(/\s+/g, '.');
+    const seasonAndEpisode = `S${subtitle.season}E${subtitle.episode}`;
+    const lang = subtitle.language;
+    const extension = 'zip';
+    const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${lang}.${extension}`;
+    const filePath = path_1.default.join(multer_1.subtitlesFolderPath, subtitle.filePath);
+    res.download(filePath, fullDownloadFileName, err => {
+        if (err)
+            throw new Error('Error downloading file');
+    });
+}));
+exports.downloadSubtitle = downloadSubtitle;
 const addSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b, _c;
+    var _a;
     const user = req.user;
     const subtitleRequest = req.body;
-    try {
-        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitleRequest.tvShowId, subtitleRequest.season, subtitleRequest.episode));
-        const episodeDetails = response.data;
-        subtitleRequest.userId = user._id;
-        subtitleRequest.episodeId = episodeDetails.id;
-        subtitleRequest.comment = ((_b = subtitleRequest.comment) === null || _b === void 0 ? void 0 : _b.trim()) || null;
-        const insertedSubtitleRequest = yield subtitleRequest_1.default.create(subtitleRequest);
-        res.status(201).json(insertedSubtitleRequest);
-    }
-    catch (error) {
-        res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
-        throw new Error(error.message || 'Error with TMBD API');
-    }
+    const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitleRequest.tvShowId, subtitleRequest.season, subtitleRequest.episode));
+    const episodeDetails = response.data;
+    subtitleRequest.userId = user._id;
+    subtitleRequest.episodeId = episodeDetails.id;
+    subtitleRequest.comment = ((_a = subtitleRequest.comment) === null || _a === void 0 ? void 0 : _a.trim()) || null;
+    const insertedSubtitleRequest = yield subtitleRequest_1.default.create(subtitleRequest);
+    res.status(201).json(insertedSubtitleRequest);
 }));
 exports.addSubtitleRequest = addSubtitleRequest;
 const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
-    const userId = (_d = req.user) === null || _d === void 0 ? void 0 : _d._id;
+    var _b;
+    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b._id;
     const episodeId = Number(req.params.episodeId);
     if (!episodeId) {
         res.status(400);
@@ -119,18 +163,16 @@ const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req,
 }));
 exports.getSubtitleRequestsForEpisode = getSubtitleRequestsForEpisode;
 const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e, _f;
-    const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e._id;
-    const isAdmin = (_f = req.user) === null || _f === void 0 ? void 0 : _f.isAdmin;
+    var _c, _d;
+    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c._id;
+    const isAdmin = (_d = req.user) === null || _d === void 0 ? void 0 : _d.isAdmin;
     const requestId = req.params.requestId;
-    const subtitleRequest = yield subtitleRequest_1.default.findOne({ _id: requestId });
+    const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
     if (!subtitleRequest) {
-        res.status(404);
-        throw new Error('Subtitle request not found');
+        throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
     }
-    if (subtitleRequest.userId !== userId && !isAdmin) {
-        res.status(401);
-        throw new Error('Not authorized');
+    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin) {
+        throw new errorMiddleware_1.CustomError('Not authorized', 401);
     }
     yield subtitleRequest.deleteOne();
     res.json('Removed subtitle request');

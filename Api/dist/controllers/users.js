@@ -138,7 +138,7 @@ const getWatchlist = (0, express_async_handler_1.default)((req, res) => __awaite
     }
     catch (error) {
         res.status(((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
     res.json(watchlist);
 }));
@@ -175,7 +175,7 @@ const addToWatchlist = (0, express_async_handler_1.default)((req, res) => __awai
         }
         else {
             res.status(((_f = error.response) === null || _f === void 0 ? void 0 : _f.status) || 500);
-            throw new Error(error.message || 'Internal Server Error');
+            throw new Error(error.message || 'Error occurred');
         }
     }
     if (watchlisted) {
@@ -300,7 +300,7 @@ const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __
     }
     catch (error) {
         res.status(((_k = error.response) === null || _k === void 0 ? void 0 : _k.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
     const alreadyWatchedEpisodes = yield watchedEpisodes_1.default.find({
         userId,
@@ -324,7 +324,7 @@ const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __
     }
     catch (error) {
         res.status(((_l = error.response) === null || _l === void 0 ? void 0 : _l.status) || 500);
-        throw new Error(error.message || 'Internal Server Error');
+        throw new Error(error.message || 'Error occurred');
     }
 }));
 exports.markEpisodeWatched = markEpisodeWatched;

@@ -5,13 +5,15 @@ import {
   getSubtitleRequestsForEpisode,
   deleteSubtitleRequest,
   addSubtitle,
+  downloadSubtitle,
 } from '../controllers/subtitles'
 import { validateSubtitleRequest } from '../middleware/bodyMiddleware'
 import { upload } from '../config/multer'
 
 const subtitleRouter: Router = express.Router()
 
-subtitleRouter.post('', authenticate, upload.single('subtitle'), addSubtitle)
+subtitleRouter.post('', authenticate, upload.array('subtitles', 5), addSubtitle)
+subtitleRouter.get('/download/:subtitleId', downloadSubtitle)
 
 subtitleRouter.post(
   '/requests',

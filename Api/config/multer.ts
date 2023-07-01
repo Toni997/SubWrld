@@ -1,8 +1,14 @@
 import multer, { Multer, FileFilterCallback } from 'multer'
 import { Request } from 'express'
 import { subtitleValidator } from '../middleware/validators/subtitleValidator'
+import { v4 as uuidv4 } from 'uuid'
+import { CustomError } from '../middleware/errorMiddleware'
+import fs from 'fs'
+import path from 'path'
 
 const fileSizeLimitMegabytes = 1
+export const tempFolderPath = path.join('uploads', 'temp')
+export const subtitlesFolderPath = path.join('uploads', 'subtitles')
 
 const storage = multer.diskStorage({
   destination: (
@@ -10,14 +16,17 @@ const storage = multer.diskStorage({
     file: Express.Multer.File,
     cb: (error: Error | null, destination: string) => void
   ) => {
-    cb(null, 'uploads/')
+    if (!fs.existsSync(tempFolderPath)) {
+      fs.mkdirSync(tempFolderPath)
+    }
+    cb(null, tempFolderPath)
   },
   filename: (
     req: Request,
     file: Express.Multer.File,
     cb: (error: Error | null, filename: string) => void
   ) => {
-    cb(null, file.originalname)
+    cb(null, uuidv4() + '.' + file.originalname.split('.').pop())
   },
 })
 
@@ -44,12 +53,13 @@ const fileFilter = (
   ) {
     const { error } = subtitleValidator.validate(req.body)
     if (!error) {
+      req.statusCode = 400
       cb(null, true)
     } else {
-      cb(new Error(error.details[0].message))
+      cb(new CustomError(error.details[0].message, 400))
     }
   } else {
-    cb(null, false)
+    cb(new CustomError('Unsupported files', 415))
   }
 }
 

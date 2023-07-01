@@ -36,7 +36,7 @@ const subtitleSchema = new mongoose_1.Schema({
     },
     subtitleRequestId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Subtitle',
+        ref: 'SubtitleRequest',
         default: null,
     },
     isWorkInProgress: {
@@ -68,6 +68,7 @@ const subtitleSchema = new mongoose_1.Schema({
         default: 0,
     },
     uploaderIsAuthor: {
+        type: Boolean,
         required: true,
         default: false,
     },

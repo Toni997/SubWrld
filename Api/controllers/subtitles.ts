@@ -1,96 +1,146 @@
 import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
-import { validateSubtitleRequest } from '../middleware/bodyMiddleware'
 import SubtitleRequest, {
   ICreateSubtitleRequest,
-  ISubtitleRequest,
 } from '../models/subtitleRequest'
 import { IUser } from '../models/user'
 import { IAuthUserRequest } from '../interfaces/request'
 import axios from 'axios'
 import {
+  getTVShowDetailsUrl,
   getTVShowEpisodeDetailsUrl,
-  getTVShowSeasonDetailsUrl,
 } from '../utils/tmdb-api'
-import { ITVShowEpisode } from '../interfaces/tv-shows'
+import { ITVShowDetails, ITVShowEpisode } from '../interfaces/tv-shows'
 import mongoose from 'mongoose'
-import Subtitle, { ICreateSubtitle } from '../models/subtitle'
+import Subtitle, { ICreateSubtitle, IUpsertSubtitle } from '../models/subtitle'
 import { v4 as uuidv4 } from 'uuid'
 import archiver from 'archiver'
 import fs from 'fs'
+import path from 'path'
+import { subtitlesFolderPath, tempFolderPath } from '../config/multer'
+import { CustomError } from '../middleware/errorMiddleware'
 
 const addSubtitle = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
-    if (!req.file) {
-      res.status(400)
-      throw new Error('File not supported')
-    }
     const user = req.user as IUser
-    const subtitle: ICreateSubtitle = req.body
-    const files = req.files
+    const subtitle: IUpsertSubtitle = req.body
+    const files = req.files as Express.Multer.File[] | undefined
 
-    try {
-      const response = await axios.get(
-        getTVShowEpisodeDetailsUrl(
-          subtitle.tvShowId,
-          subtitle.season,
-          subtitle.episode
-        )
+    if (subtitle.subtitleRequestId) {
+      const foundRequest = await SubtitleRequest.findById(
+        subtitle.subtitleRequestId
       )
-      const episodeDetails: ITVShowEpisode = response.data
+      if (!foundRequest)
+        throw new CustomError('Subtitle request not found', 404)
+    }
 
-      subtitle.userId = user._id
-      subtitle.episodeId = episodeDetails.id
-      subtitle.release = subtitle.release.trim()
+    const response = await axios.get(
+      getTVShowEpisodeDetailsUrl(
+        subtitle.tvShowId,
+        subtitle.season,
+        subtitle.episode
+      )
+    )
+    const episodeDetails: ITVShowEpisode = response.data
 
-      /*const zipFileName = uuidv4()
-      const output = fs.createWriteStream(zipFileName + '.zip')
+    const subtitleToInsert: ICreateSubtitle = {
+      userId: user._id,
+      tvShowId: Number(subtitle.tvShowId),
+      season: Number(subtitle.season),
+      episode: Number(subtitle.episode),
+      episodeId: episodeDetails.id,
+      language: subtitle.language,
+      frameRate: Number(subtitle.frameRate),
+      forHearingImpaired: Boolean(subtitle.forHearingImpaired),
+      isWorkInProgress: Boolean(subtitle.isWorkInProgress),
+      onlyForeignLanguage: Boolean(subtitle.onlyForeignLanguage),
+      uploaderIsAuthor: Boolean(subtitle.uploaderIsAuthor),
+      release: subtitle.release.replace(/\s+/g, ' '),
+      subtitleRequestId: subtitle.subtitleRequestId
+        ? new mongoose.Types.ObjectId(subtitle.subtitleRequestId)
+        : null,
+      filePath: null,
+    }
+
+    if (files) {
+      const zipFileName = uuidv4() + '.zip'
+      const zipFilePath = path.join(subtitlesFolderPath, zipFileName)
+      subtitleToInsert.filePath = zipFileName
+
+      const output = fs.createWriteStream(zipFilePath)
 
       const archive = archiver('zip', {
-        zlib: { level: 9 }, // Set compression level (optional)
-      });
-    
-      // Pipe the archive stream to the output stream
-      archive.pipe(output);
+        zlib: { level: 9 },
+      })
 
-      const insertedSubtitleRequest = await Subtitle.create(subtitle)*/
+      archive.pipe(output)
+      for (const file of files) {
+        const filePath = path.join(tempFolderPath, file.filename)
+        archive.file(filePath, { name: file.originalname })
+      }
 
-      res.status(201).json(subtitle)
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error with TMBD API')
+      archive.finalize()
+    }
+
+    const insertedSubtitle = await Subtitle.create(subtitleToInsert)
+
+    res.status(201).json(insertedSubtitle)
+    console.log('hey')
+    if (!files) return
+    for (const file of files) {
+      const filePath = path.join(tempFolderPath, file.filename)
+      fs.unlinkSync(filePath)
     }
   }
 )
+
+const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
+  const subtitleId = req.params.subtitleId
+  const subtitle = await Subtitle.findById(subtitleId)
+
+  if (!subtitle || !subtitle.filePath)
+    throw new CustomError('Subtitle not found', 404)
+
+  const response = await axios.get(getTVShowDetailsUrl(subtitle.tvShowId))
+  const tvShowDetails: ITVShowDetails = response.data
+  const tvShowName = tvShowDetails.name
+    .replace(/[^a-zA-Z0-9]/g, ' ')
+    .replace(/\s+/g, '.')
+  const seasonAndEpisode = `S${subtitle.season}E${subtitle.episode}`
+  const lang = subtitle.language
+  const extension = 'zip'
+
+  const fullDownloadFileName = `${tvShowName}.${seasonAndEpisode}.${subtitle.release}.${lang}.${extension}`
+  const filePath = path.join(subtitlesFolderPath, subtitle.filePath)
+
+  res.download(filePath, fullDownloadFileName, err => {
+    if (err) throw new Error('Error downloading file')
+  })
+})
 
 const addSubtitleRequest = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const user = req.user as IUser
     const subtitleRequest: ICreateSubtitleRequest = req.body
 
-    try {
-      const response = await axios.get(
-        getTVShowEpisodeDetailsUrl(
-          subtitleRequest.tvShowId,
-          subtitleRequest.season,
-          subtitleRequest.episode
-        )
+    const response = await axios.get(
+      getTVShowEpisodeDetailsUrl(
+        subtitleRequest.tvShowId,
+        subtitleRequest.season,
+        subtitleRequest.episode
       )
-      const episodeDetails: ITVShowEpisode = response.data
+    )
+    const episodeDetails: ITVShowEpisode = response.data
 
-      subtitleRequest.userId = user._id
-      subtitleRequest.episodeId = episodeDetails.id
-      subtitleRequest.comment = subtitleRequest.comment?.trim() || null
+    subtitleRequest.userId = user._id
+    subtitleRequest.episodeId = episodeDetails.id
+    subtitleRequest.comment = subtitleRequest.comment?.trim() || null
 
-      const insertedSubtitleRequest = await SubtitleRequest.create(
-        subtitleRequest
-      )
+    const insertedSubtitleRequest = await SubtitleRequest.create(
+      subtitleRequest
+    )
 
-      res.status(201).json(insertedSubtitleRequest)
-    } catch (error: any) {
-      res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Error with TMBD API')
-    }
+    res.status(201).json(insertedSubtitleRequest)
   }
 )
 
@@ -142,6 +192,7 @@ const getSubtitleRequestsForEpisode = asyncHandler(
         },
       },
     ])
+
     res.json(subtitleRequests)
   }
 )
@@ -152,16 +203,14 @@ const deleteSubtitleRequest = asyncHandler(
     const isAdmin = req.user?.isAdmin as boolean
     const requestId = req.params.requestId
 
-    const subtitleRequest = await SubtitleRequest.findOne({ _id: requestId })
+    const subtitleRequest = await SubtitleRequest.findById(requestId)
 
     if (!subtitleRequest) {
-      res.status(404)
-      throw new Error('Subtitle request not found')
+      throw new CustomError('Subtitle request not found', 404)
     }
 
-    if (subtitleRequest.userId !== userId && !isAdmin) {
-      res.status(401)
-      throw new Error('Not authorized')
+    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin) {
+      throw new CustomError('Not authorized', 401)
     }
 
     await subtitleRequest.deleteOne()
@@ -175,4 +224,5 @@ export {
   getSubtitleRequestsForEpisode,
   deleteSubtitleRequest,
   addSubtitle,
+  downloadSubtitle,
 }

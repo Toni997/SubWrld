@@ -151,7 +151,7 @@ const getWatchlist = asyncHandler(
       }
     } catch (error: any) {
       res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Internal Server Error')
+      throw new Error(error.message || 'Error occurred')
     }
     res.json(watchlist)
   }
@@ -190,7 +190,7 @@ const addToWatchlist = asyncHandler(
         res.status(error.response.status).json(error.response.statusText)
       } else {
         res.status(error.response?.status || 500)
-        throw new Error(error.message || 'Internal Server Error')
+        throw new Error(error.message || 'Error occurred')
       }
     }
 
@@ -349,7 +349,7 @@ const markEpisodeWatched = asyncHandler(
       await axios.get(getTVShowDetailsUrl(markWatched.tvShowId))
     } catch (error: any) {
       res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Internal Server Error')
+      throw new Error(error.message || 'Error occurred')
     }
 
     const alreadyWatchedEpisodes = await WatchedEpisode.find({
@@ -383,7 +383,7 @@ const markEpisodeWatched = asyncHandler(
       }
     } catch (error: any) {
       res.status(error.response?.status || 500)
-      throw new Error(error.message || 'Internal Server Error')
+      throw new Error(error.message || 'Error occurred')
     }
   }
 )

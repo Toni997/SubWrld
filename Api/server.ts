@@ -2,7 +2,6 @@ import express, { Express } from 'express'
 import dotenv from 'dotenv'
 import morgan from 'morgan'
 import cors from 'cors'
-import multer from 'multer'
 import { errorHandler, notFound } from './middleware/errorMiddleware'
 import connectDB from './config/mongo'
 
@@ -10,7 +9,6 @@ import indexRouter from './routes/index'
 import usersRouter from './routes/users'
 import tvShowRouter from './routes/tv-shows'
 import subtitleRouter from './routes/subtitles'
-const upload = multer({ dest: 'uploads/' })
 
 dotenv.config()
 
