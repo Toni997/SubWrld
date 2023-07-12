@@ -1,19 +1,56 @@
 import express, { Router } from 'express'
-import { authenticate, passUserToRequest } from '../middleware/authMiddleware'
+import {
+  authenticate,
+  passUserToRequest,
+  requireAdminRights,
+} from '../middleware/authMiddleware'
 import {
   addSubtitleRequest,
   getSubtitleRequestsForEpisode,
   deleteSubtitleRequest,
   addSubtitle,
   downloadSubtitle,
+  deleteSubtitle,
+  getSubtitlesForEpisode,
+  thankSubtitleUploader,
+  confirmSubtitle,
+  updateSubtitle,
 } from '../controllers/subtitles'
 import { validateSubtitleRequest } from '../middleware/bodyMiddleware'
-import { upload } from '../config/multer'
+import { createSubtitleMulter, updateSubtitleMulter } from '../config/multer'
+import onlyMultipartDataAllowed from '../middleware/onlyMultipartDataAllowed'
 
 const subtitleRouter: Router = express.Router()
 
-subtitleRouter.post('', authenticate, upload.array('subtitles', 5), addSubtitle)
+subtitleRouter.post(
+  '',
+  authenticate,
+  onlyMultipartDataAllowed,
+  createSubtitleMulter.array('files', 5),
+  addSubtitle
+)
+
+subtitleRouter.put(
+  '/:subtitleId',
+  authenticate,
+  onlyMultipartDataAllowed,
+  updateSubtitleMulter.array('files', 5),
+  updateSubtitle
+)
+
 subtitleRouter.get('/download/:subtitleId', downloadSubtitle)
+
+subtitleRouter.post('/thanks/:subtitleId', authenticate, thankSubtitleUploader)
+
+subtitleRouter.patch(
+  '/confirm/:subtitleId',
+  requireAdminRights,
+  confirmSubtitle
+)
+
+subtitleRouter.get('/:episodeId', passUserToRequest, getSubtitlesForEpisode)
+
+subtitleRouter.delete('/:subtitleId', authenticate, deleteSubtitle)
 
 subtitleRouter.post(
   '/requests',

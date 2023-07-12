@@ -16,6 +16,15 @@
       />
     </q-dialog>
 
+    <q-dialog v-model="isSubtitleFormShowed" persistent>
+      <subtitle-form
+        style="width: min(600px, 100%)"
+        :episode="episode"
+        :relatedRequestId="relatedRequestId"
+        @subtitle-saved="onSubtitleSaved"
+      />
+    </q-dialog>
+
     <q-banner v-show="error" dense class="text-white bg-red">
       <template v-slot:avatar>
         <q-icon name="error" color="white" />
@@ -41,6 +50,7 @@
         }}E{{ episode.details?.episode_number }})
       </p>
       <q-btn
+        v-if="auth.isLoggedIn()"
         label="Add Request"
         color="primary"
         @click="isRequestSubtitleDialogShown = true"
@@ -100,7 +110,7 @@
                       <q-item
                         v-if="auth.userInfo?._id !== props.row.userId"
                         clickable
-                        @click="() => console.log(props.row)"
+                        @click="uploadSubtitleClick(props.row)"
                         v-close-popup
                       >
                         <q-item-section>Upload Subtitle</q-item-section>
@@ -134,9 +144,10 @@
           </q-tr>
           <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
             <q-td colspan="100%">
-              <div class="text-left">
-                {{ props.row.comment || 'No comment added' }}.
-              </div>
+              <div
+                class="text-left"
+                v-html="props.row.comment || '<i>No comment added</i>'"
+              ></div>
             </q-td>
           </q-tr>
         </template>
@@ -155,13 +166,9 @@ import {
   Ref,
   toRefs,
 } from 'vue'
-import { ISubtitleRequest } from '../interfaces/subtitle'
+import { ISubtitleRequest } from '../interfaces/subtitleRequest'
 import { api, ApiEndpoints } from '../boot/axios'
-import {
-  ITVShowDetails,
-  ITVShowEpisode,
-  ITVShowEpisodeForDialog,
-} from '../interfaces/tv-show'
+import { ITVShowEpisodeForDialog } from '../interfaces/tv-show'
 import { languages } from 'countries-list'
 import moment from 'moment'
 import { useAuthStore } from '../stores/auth-store'
@@ -169,9 +176,11 @@ import truncate from 'truncate'
 import { useQuasar } from 'quasar'
 import RequestSubtitleForm from '../components/RequestSubtitleForm.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import SubtitleForm from '../components/SubtitleForm.vue'
+import { ISubtitle } from '../interfaces/subtitle'
 
 export default defineComponent({
-  components: { RequestSubtitleForm, ConfirmDialog },
+  components: { RequestSubtitleForm, SubtitleForm, ConfirmDialog },
 
   props: {
     episode: {
@@ -189,20 +198,14 @@ export default defineComponent({
     const error: Ref<string> = ref('')
     const isRequestSubtitleDialogShown: Ref<boolean> = ref(false)
     const showConfirmDialog: Ref<boolean> = ref(false)
+    const isSubtitleFormShowed: Ref<boolean> = ref(false)
+    const relatedRequestId: Ref<string | undefined> = ref(undefined)
     let requestIdToDelete: string | null = null
     const columnExpanded = reactive<{
       [key: number]: boolean
     }>({})
 
     const columns = [
-      {
-        name: 'id',
-        field: (row: ISubtitleRequest) => row._id,
-      },
-      {
-        name: 'userId',
-        field: (row: ISubtitleRequest) => row.userId,
-      },
       {
         name: 'preferredLanguage',
         required: true,
@@ -232,13 +235,20 @@ export default defineComponent({
         name: 'comment',
         required: true,
         label: 'Comment',
-        field: (row: ISubtitleRequest) => truncate(row.comment || 'No', 20),
+        field: (row: ISubtitleRequest) => truncate(row.comment || '-', 20),
         sortable: true,
       },
       {
         name: 'isFulfilled',
         required: true,
         label: 'Fulfilled',
+        field: (row: ISubtitleRequest) => (row.isFulfilled ? 'Yes' : 'No'),
+        sortable: true,
+      },
+      {
+        name: 'uploadedBy',
+        required: true,
+        label: 'Uploaded By',
         field: (row: ISubtitleRequest) => (row.isFulfilled ? 'Yes' : 'No'),
         sortable: true,
       },
@@ -254,14 +264,13 @@ export default defineComponent({
       {
         name: 'requestedFromNow',
         required: true,
-        label: 'Time',
+        label: 'Requested',
         field: (row: ISubtitleRequest) => row.createdAt,
         sortable: true,
         format: (val: string, row: ISubtitleRequest) => moment(val).fromNow(),
         sort: (a: string, b: string) => {
           const timeA = moment(a)
           const timeB = moment(b)
-
           return timeA.isBefore(timeB)
         },
       },
@@ -274,7 +283,7 @@ export default defineComponent({
 
     const loadSubtitleRequests = async () => {
       if (!episode.value.details) return
-
+      error.value = ''
       isLoading.value = true
       try {
         const response = await api.get(
@@ -282,14 +291,13 @@ export default defineComponent({
         )
         rows.value = response.data
       } catch (err: any) {
-        error.value = err.response?.message || 'Failed to fetch.'
+        error.value = err.response?.data.message || 'Failed to fetch'
       } finally {
         isLoading.value = false
       }
     }
 
     const deleteSubtitleRequestClick = (requestId: string) => {
-      console.log('delete click')
       requestIdToDelete = requestId
       showConfirmDialog.value = true
     }
@@ -310,7 +318,7 @@ export default defineComponent({
         })
         await loadSubtitleRequests()
       } catch (err: any) {
-        error.value = err.response?.message || 'Failed to fetch.'
+        error.value = err.response?.data.message || 'Error occurred'
       } finally {
         isLoading.value = false
       }
@@ -320,6 +328,16 @@ export default defineComponent({
       isRequestSubtitleDialogShown.value = false
       episode.value.justAddedSubtitleRequestId = justAddedId
       await loadSubtitleRequests()
+    }
+
+    const onSubtitleSaved = async () => {
+      isSubtitleFormShowed.value = false
+      await loadSubtitleRequests()
+    }
+
+    const uploadSubtitleClick = (subtitle: ISubtitle) => {
+      relatedRequestId.value = subtitle._id
+      isSubtitleFormShowed.value = true
     }
 
     const getLanguageKey = (key: string): keyof typeof languages =>
@@ -337,6 +355,10 @@ export default defineComponent({
       onRequestSaved,
       showConfirmDialog,
       deleteSubtitleRequestClick,
+      isSubtitleFormShowed,
+      onSubtitleSaved,
+      relatedRequestId,
+      uploadSubtitleClick,
     }
   },
 })
@@ -361,3 +383,4 @@ export default defineComponent({
   }
 }
 </style>
+../interfaces/subtitleRequest

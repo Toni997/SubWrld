@@ -22,6 +22,7 @@ const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
+  console.log('err', err)
   const statusCode =
     err.statusCode ||
     err.response?.status ||

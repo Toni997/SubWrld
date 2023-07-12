@@ -79,12 +79,12 @@ import { ITVShowEpisode, ITVShowEpisodeForDialog } from '../interfaces/tv-show'
 import { useAuthStore } from '../stores/auth-store'
 import {
   ICreateSubtitleRequest,
-  ILanguageSelection,
   ISubtitleRequest,
   ISubtitleRequestForm,
-} from '../interfaces/subtitle'
+} from '../interfaces/subtitleRequest'
 import { api, ApiEndpoints } from '../boot/axios'
 import { useQuasar } from 'quasar'
+import { ILanguageSelection } from '../interfaces/common'
 
 const languagesMapped = Object.entries(languages).map((l) => ({
   actualValue: l[0],
@@ -144,7 +144,6 @@ export default defineComponent({
         preferForHearingImpaired: state.preferForHearingImpaired,
         comment: state.comment,
       }
-      console.log($q)
       try {
         const { data }: { data: ISubtitleRequest } = await api.post(
           ApiEndpoints.addSubtitleRequest,
@@ -156,7 +155,6 @@ export default defineComponent({
           color: 'green',
           timeout: 3000,
         })
-        console.log('returned req id is + ' + data._id)
         emit('request-saved', data._id)
       } catch (error: any) {
         $q.notify({
@@ -187,4 +185,4 @@ export default defineComponent({
     }
   },
 })
-</script>
+</script>../interfaces/subtitleRequest

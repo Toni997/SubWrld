@@ -53,4 +53,31 @@ const passUserToRequest = asyncHandler(
   }
 )
 
-export { authenticate, passUserToRequest }
+const requireAdminRights = asyncHandler(
+  async (req: IAuthUserRequest, res, next) => {
+    if (
+      !req.headers.authorization ||
+      !req.headers.authorization.startsWith('Bearer')
+    ) {
+      throw new CustomError('Not authorized', 401)
+    }
+
+    const token = req.headers.authorization.split(' ')[1]
+    let decoded: JwtPayload
+    try {
+      decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET as jwt.Secret
+      ) as JwtPayload
+    } catch (err: any) {
+      throw new CustomError('Not authorized', 401)
+    }
+
+    req.user = (await User.findById(decoded._id).select('-password')) as IUser
+    if (!req.user.isAdmin)
+      throw new CustomError('Admin rights required to perform this action', 403)
+    next()
+  }
+)
+
+export { authenticate, passUserToRequest, requireAdminRights }

@@ -13,10 +13,23 @@
           @request-saved="onSubtitleRequestSaved"
         />
       </q-dialog>
-      <q-dialog v-model="isSubtitleRequestsListDialogShows" maximized>
+      <q-dialog v-model="isSubtitleDialogShown" persistent>
+        <subtitle-form
+          style="width: min(600px, 100%)"
+          :episode="episodeForDialog"
+          @subtitle-saved="onSubtitleSaved"
+        />
+      </q-dialog>
+      <q-dialog v-model="isSubtitleRequestsListDialogShown" maximized>
         <subtitle-requests-list
           :episode="episodeForDialog"
           @closed="episodeForDialog.justAddedSubtitleRequestId = null"
+        />
+      </q-dialog>
+      <q-dialog v-model="isSubtitlesListDialogShown" maximized>
+        <subtitles-list
+          :episode="episodeForDialog"
+          @closed="episodeForDialog.justAddedSubtitleId = null"
         />
       </q-dialog>
       <q-dialog v-model="markWatchedDialog">
@@ -218,7 +231,6 @@
                 <q-expansion-item
                   v-for="(episode, episodeIndex) in season.episodes"
                   :key="episode.id"
-                  @before-show="loadSubtitlesForEpisode(episode.id)"
                 >
                   <template v-slot:header>
                     <q-item-section>
@@ -269,23 +281,36 @@
                       <q-btn icon="more_horiz" flat round>
                         <q-menu>
                           <q-list>
-                            <q-item clickable v-close-popup>
+                            <q-item
+                              clickable
+                              @click="listOfSubtitlesClick(episode)"
+                              v-close-popup
+                            >
+                              <q-item-section>All Subtitles</q-item-section>
+                            </q-item>
+                            <q-item
+                              clickable
+                              @click="uploadSubtitleClick(episode)"
+                              v-if="auth.isLoggedIn()"
+                              v-close-popup
+                            >
                               <q-item-section>Upload Subtitle</q-item-section>
                             </q-item>
                             <q-separator />
                             <q-item
                               clickable
-                              @click="requestSubtitleClick(episode)"
-                              v-close-popup
-                            >
-                              <q-item-section>Request Subtitle</q-item-section>
-                            </q-item>
-                            <q-item
-                              clickable
                               @click="listOfSubtitleRequestsClick(episode)"
                               v-close-popup
                             >
-                              <q-item-section>List of Requests</q-item-section>
+                              <q-item-section>All Requests</q-item-section>
+                            </q-item>
+                            <q-item
+                              clickable
+                              @click="requestSubtitleClick(episode)"
+                              v-if="auth.isLoggedIn()"
+                              v-close-popup
+                            >
+                              <q-item-section>Request Subtitle</q-item-section>
                             </q-item>
                           </q-list>
                         </q-menu>
@@ -318,10 +343,17 @@ import {
 } from '../interfaces/tv-show'
 import RequestSubtitleForm from '../components/RequestSubtitleForm.vue'
 import SubtitleRequestsList from '../components/SubtitleRequestsList.vue'
+import SubtitlesList from '../components/SubtitlesList.vue'
+import SubtitleForm from '../components/SubtitleForm.vue'
 import { getEmojiFlag, countries } from 'countries-list'
 
 export default defineComponent({
-  components: { RequestSubtitleForm, SubtitleRequestsList },
+  components: {
+    RequestSubtitleForm,
+    SubtitleRequestsList,
+    SubtitleForm,
+    SubtitlesList,
+  },
   setup() {
     const route = useRoute()
     const auth = useAuthStore()
@@ -336,11 +368,14 @@ export default defineComponent({
     const markWatchedSeasonSelected: Ref<ITVShowSeason | null> = ref(null)
     const markWatchedEpisodeSelectedIndex: Ref<number | null> = ref(null)
     const isRequestSubtitleDialogShown: Ref<boolean> = ref(false)
-    const isSubtitleRequestsListDialogShows: Ref<boolean> = ref(false)
+    const isSubtitleRequestsListDialogShown: Ref<boolean> = ref(false)
+    const isSubtitleDialogShown: Ref<boolean> = ref(false)
+    const isSubtitlesListDialogShown: Ref<boolean> = ref(false)
     const episodeForDialog = reactive<ITVShowEpisodeForDialog>({
       details: null,
       tvShowId: null,
       justAddedSubtitleRequestId: null,
+      justAddedSubtitleId: null,
     })
 
     onMounted(async () => {
@@ -443,10 +478,6 @@ export default defineComponent({
       } finally {
         updatingWatchlist.value = false
       }
-    }
-
-    const loadSubtitlesForEpisode = (episodeId: number) => {
-      // return if already loaded
     }
 
     const markSingleEpisodeAsWatched = async () => {
@@ -647,15 +678,36 @@ export default defineComponent({
 
     const listOfSubtitleRequestsClick = (episodeDetails: ITVShowEpisode) => {
       if (!tvShowDetails.value) return
-      isSubtitleRequestsListDialogShows.value = true
+      isSubtitleRequestsListDialogShown.value = true
       episodeForDialog.details = episodeDetails
       episodeForDialog.tvShowId = tvShowDetails.value.id
     }
 
     const onSubtitleRequestSaved = (justAddedId: string) => {
       isRequestSubtitleDialogShown.value = false
-      isSubtitleRequestsListDialogShows.value = true
+      isSubtitleRequestsListDialogShown.value = true
       episodeForDialog.justAddedSubtitleRequestId = justAddedId
+    }
+
+    const uploadSubtitleClick = (episodeDetails: ITVShowEpisode) => {
+      if (!tvShowDetails.value) return
+      console.log('helo')
+      isSubtitleDialogShown.value = true
+      episodeForDialog.details = episodeDetails
+      episodeForDialog.tvShowId = tvShowDetails.value.id
+    }
+
+    const onSubtitleSaved = (justAddedId: string) => {
+      isSubtitleDialogShown.value = false
+      isSubtitlesListDialogShown.value = true
+      episodeForDialog.justAddedSubtitleRequestId = justAddedId
+    }
+
+    const listOfSubtitlesClick = (episodeDetails: ITVShowEpisode) => {
+      if (!tvShowDetails.value) return
+      isSubtitlesListDialogShown.value = true
+      episodeForDialog.details = episodeDetails
+      episodeForDialog.tvShowId = tvShowDetails.value.id
     }
 
     const getCountryKey = (key: string): keyof typeof countries =>
@@ -668,7 +720,6 @@ export default defineComponent({
       error,
       tab,
       truncate,
-      loadSubtitlesForEpisode,
       updateWatchlist,
       auth,
       getEmojiFlag,
@@ -686,9 +737,14 @@ export default defineComponent({
       isRequestSubtitleDialogShown,
       requestSubtitleClick,
       episodeForDialog,
-      isSubtitleRequestsListDialogShows,
+      isSubtitleRequestsListDialogShown,
       listOfSubtitleRequestsClick,
       onSubtitleRequestSaved,
+      onSubtitleSaved,
+      isSubtitleDialogShown,
+      uploadSubtitleClick,
+      isSubtitlesListDialogShown,
+      listOfSubtitlesClick,
     }
   },
 })

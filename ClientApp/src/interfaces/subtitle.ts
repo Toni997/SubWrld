@@ -1,49 +1,52 @@
-export interface ISubtitleRequestForm {
+import { IID, ILanguageSelection, ITimestamps } from './common'
+import { IUserRef } from './user'
+
+export interface ISubtitleForm {
   tvShowId: number
   season: number
   episode: number
-  preferredLanguage: ILanguageSelection | null
-  preferredFrameRate: number | null
-  preferForHearingImpaired: boolean
-  comment: string | null
+  language: ILanguageSelection | null
+  frameRate: number | null
+  forHearingImpaired: boolean
+  isWorkInProgress: boolean
+  onlyForeignLanguage: boolean
+  uploaderIsAuthor: boolean
+  release: string | null
+  files: File[]
 }
 
-export interface ICreateSubtitleRequest {
+export interface IUpsertSubtitle {
   tvShowId: number
   season: number
   episode: number
-  preferredLanguage: string
-  preferredFrameRate: number | null
-  preferForHearingImpaired: boolean
-  comment: string | null
+  language: string
+  frameRate: number
+  forHearingImpaired: boolean
+  isWorkInProgress: boolean
+  onlyForeignLanguage: boolean
+  uploaderIsAuthor: boolean
+  release: string
+  subtitleRequestId: string | null
+  files: File[]
 }
 
-export interface ISubtitleRequest {
-  _id: string
-  userId: string
+export interface ISubtitle extends IID, ITimestamps {
+  user: IUserRef
   tvShowId: number
   season: number
   episode: number
   episodeId: number
-  preferredLanguage: string
-  preferredFrameRate: number | null
-  preferForHearingImpaired: boolean
-  isFulfilled: boolean
-  comment: string | null
-  createdAt: string
-  updatedAt: string
-  user: ISubtitleRequestUser
-  subtitleId: string | null
-}
-
-export interface ILanguageSelection {
-  actualValue: string
-  displayValue: string
-}
-
-export interface ISubtitleRequestUser {
-  _id: number
-  username: string
-  reputation: number
-  createdAt: string
+  language: string
+  frameRate: number
+  forHearingImpaired: boolean
+  isWorkInProgress: boolean
+  onlyForeignLanguage: boolean
+  uploaderIsAuthor: boolean
+  release: string
+  subtitleRequestId: string | null
+  filePath: string | null
+  downloads: number
+  thankedByCount: number
+  isThankedByUser: boolean
+  isConfirmed: boolean
 }

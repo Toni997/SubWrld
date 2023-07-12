@@ -1,7 +1,7 @@
 import mongoose, { Schema, model, mongo } from 'mongoose'
 import { IID, ITimestamps } from '../interfaces/mongoose'
 
-export interface IUpsertSubtitle {
+export interface ICreateSubtitleForm {
   tvShowId: string
   season: string
   episode: string
@@ -12,7 +12,17 @@ export interface IUpsertSubtitle {
   onlyForeignLanguage: string
   uploaderIsAuthor: string
   release: string
-  subtitleRequestId: string
+  subtitleRequestId: string | undefined
+}
+
+export interface IUpdateSubtitleForm {
+  language: string
+  frameRate: string
+  forHearingImpaired: string
+  isWorkInProgress: string
+  onlyForeignLanguage: string
+  uploaderIsAuthor: string
+  release: string
 }
 
 export interface ICreateSubtitle {
@@ -28,14 +38,15 @@ export interface ICreateSubtitle {
   onlyForeignLanguage: boolean
   uploaderIsAuthor: boolean
   release: string
-  subtitleRequestId: mongoose.Types.ObjectId | null
   filePath: string | null
+  subtitleRequestId: mongoose.Types.ObjectId | null
 }
 
 export interface ISubtitle extends IID, ITimestamps, ICreateSubtitle {
   downloads: number
   thankedByCount: number
   isConfirmed: boolean
+  thankedBy: mongoose.Types.ObjectId[]
 }
 
 const subtitleSchema = new Schema(

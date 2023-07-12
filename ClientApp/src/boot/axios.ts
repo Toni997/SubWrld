@@ -2,6 +2,7 @@ import { boot } from 'quasar/wrappers'
 import axios, { AxiosInstance } from 'axios'
 
 export class ApiEndpoints {
+  static baseUrl = 'http://localhost:3000'
   static loginPath = '/users/login'
   static signupPath = '/users/signup'
   static getPopularTVShowsPath = '/tv-shows/popular'
@@ -28,6 +29,21 @@ export class ApiEndpoints {
   static deleteSubtitleRequest = (episodeId: string | number) =>
     `/subtitles/requests/${episodeId}`
   static setDarkMode = '/users/set-dark-mode'
+  static addSubtitle = '/subtitles'
+  static editSubtitle = (subtitleId: string | number) =>
+    `/subtitles/${subtitleId}`
+  static getSubtitles = (episodeId: string | number) =>
+    `/subtitles/${episodeId}`
+  static deleteSubtitle = (episodeId: string | number) =>
+    `/subtitles/${episodeId}`
+  static downloadSubtitle = (subtitleId: string | number) =>
+    this.baseUrl + `/subtitles/download/${subtitleId}`
+  static thankForSubtitle = (subtitleId: string | number) =>
+    `/subtitles/thanks/${subtitleId}`
+  static confirmSubtitle = (subtitleId: string | number) =>
+    `/subtitles/confirm/${subtitleId}`
+  static reportSubtitle = (subtitleId: string | number) =>
+    `/subtitles/report/${subtitleId}`
 }
 
 declare module '@vue/runtime-core' {
@@ -42,7 +58,7 @@ declare module '@vue/runtime-core' {
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
-const api = axios.create({ baseURL: 'http://localhost:3000' })
+const api = axios.create({ baseURL: ApiEndpoints.baseUrl })
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')

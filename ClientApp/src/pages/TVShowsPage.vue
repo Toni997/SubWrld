@@ -131,6 +131,7 @@ export default {
     }
 
     const loadData = async () => {
+      error.value = ''
       isLoading.value = true
       try {
         const { data } = await api.get(ApiEndpoints.getPopularTVShowsPath)

@@ -104,4 +104,5 @@ export interface ITVShowEpisodeForDialog {
   details: ITVShowEpisode | null
   tvShowId: number | null
   justAddedSubtitleRequestId: string | null
+  justAddedSubtitleId: string | null
 }

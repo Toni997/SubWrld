@@ -11,3 +11,10 @@ export interface AuthState {
   isSettingDarkMode: boolean
   userInfo: null | UserInfo
 }
+
+export interface IUserRef {
+  _id: string
+  username: string
+  reputation: number
+  createdAt: string
+}
