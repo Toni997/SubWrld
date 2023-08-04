@@ -10,7 +10,7 @@ import {
 } from '../utils/tmdb-api'
 import { ITVShowDetails, ITVShowSeason } from '../interfaces/tv-shows'
 import { IAuthUserRequest } from '../interfaces/request'
-import WatchedEpisode from '../models/watchedEpisodes'
+import WatchedEpisode from '../models/watchedEpisode'
 import Watchlist from '../models/watchlist'
 
 const limitNumberOfResults = 10

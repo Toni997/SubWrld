@@ -23,7 +23,7 @@ import { markWatchedEpisodesValidator } from '../middleware/validators/watchedEp
 import WatchedEpisode, {
   IUpdateWatchedEpisode,
   IWatchedEpisode,
-} from '../models/watchedEpisodes'
+} from '../models/watchedEpisode'
 import { CustomError } from '../middleware/errorMiddleware'
 
 // @desc Auth user & get token

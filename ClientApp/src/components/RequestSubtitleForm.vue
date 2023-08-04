@@ -158,7 +158,7 @@ export default defineComponent({
         emit('request-saved', data._id)
       } catch (error: any) {
         $q.notify({
-          message: error.response?.message || 'Failed to send request',
+          message: error.response?.data.message || 'Error occurred',
           position: 'bottom',
           color: 'red',
           timeout: 3000,
@@ -175,7 +175,7 @@ export default defineComponent({
       onSubmit,
       state,
       isLoading,
-      required: (val: any) => val || 'This field is required',
+      required: (val: any) => !!val || 'This field is required',
       frameRateRangeLimit: (val: number) =>
         !val ||
         (val >= 23.976 && val <= 60) ||

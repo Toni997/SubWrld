@@ -13,7 +13,6 @@
             - Related to a subtitle request</span
           >
         </p>
-        {{ subtitle?._id }}
         <q-select
           class="q-mb-md"
           filled

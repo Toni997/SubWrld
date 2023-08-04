@@ -23,10 +23,6 @@ export default {
       }
     }
 
-    if (!auth.isLoggedIn()) {
-      auth.loadDarkModeFromStorage()
-    }
-
     $q.dark.set(auth.darkMode)
   },
 }

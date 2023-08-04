@@ -14,11 +14,10 @@ import {
   setDarkMode,
 } from '../controllers/users'
 import { authenticate } from '../middleware/authMiddleware'
-import {
-  validateMarkWatched,
-  validateRemoveFromWatchlist,
-  validateSetDarkMode,
-} from '../middleware/bodyMiddleware'
+import { validateBody } from '../middleware/bodyMiddleware'
+import { markWatchedValidator } from '../middleware/validators/watchedEpisodesValidator'
+import { removeFromWatchlistValidator } from '../middleware/validators/watchlistValidator'
+import { setDarkModeValidator } from '../middleware/validators/setDarkModeValidator'
 
 const usersRouter: Router = express.Router()
 
@@ -27,7 +26,7 @@ usersRouter.post('/signup', signupUser)
 usersRouter.patch(
   '/set-dark-mode',
   authenticate,
-  validateSetDarkMode,
+  validateBody(setDarkModeValidator),
   setDarkMode
 )
 usersRouter.get('/watchlisted/:tvShowId', authenticate, checkWatchlisted)
@@ -35,7 +34,7 @@ usersRouter.post('/watchlist/:tvShowId', authenticate, addToWatchlist)
 usersRouter.delete(
   '/watchlist/',
   authenticate,
-  validateRemoveFromWatchlist,
+  validateBody(removeFromWatchlistValidator),
   removeFromWatchlist
 )
 usersRouter.get('/watchlist', authenticate, getWatchlist)
@@ -43,7 +42,7 @@ usersRouter.get('/watched/:episodeId', authenticate, checkEpisodeWatched)
 usersRouter.post(
   '/mark-watched',
   authenticate,
-  validateMarkWatched,
+  validateBody(markWatchedValidator),
   markEpisodeWatched
 )
 usersRouter.delete(

@@ -38,11 +38,6 @@ const subtitleRequestSchema = new mongoose_1.Schema({
         ref: 'Subtitle',
         default: null,
     },
-    isFulfilled: {
-        type: Boolean,
-        required: true,
-        default: false,
-    },
     preferForHearingImpaired: {
         type: Boolean,
         required: true,

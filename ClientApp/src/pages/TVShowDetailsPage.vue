@@ -7,11 +7,13 @@
       icon="autorenew"
     >
       <q-dialog v-model="isRequestSubtitleDialogShown" persistent>
-        <request-subtitle-form
-          style="width: min(600px, 100%)"
-          :episode="episodeForDialog"
-          @request-saved="onSubtitleRequestSaved"
-        />
+        <q-scroll-area style="width: min(600px, 100%); height: 100%">
+          <request-subtitle-form
+            style="width: min(600px, 100%)"
+            :episode="episodeForDialog"
+            @request-saved="onSubtitleRequestSaved"
+          />
+        </q-scroll-area>
       </q-dialog>
       <q-dialog v-model="isSubtitleDialogShown" persistent>
         <subtitle-form
@@ -31,6 +33,11 @@
           :episode="episodeForDialog"
           @closed="episodeForDialog.justAddedSubtitleId = null"
         />
+      </q-dialog>
+      <q-dialog v-model="isAnnouncementDialogShown" v-if="tvShowDetails">
+        <q-scroll-area style="width: min(600px, 100%); height: 100%">
+          <announcements-list :tvShowId="tvShowDetails.id" />
+        </q-scroll-area>
       </q-dialog>
       <q-dialog v-model="markWatchedDialog">
         <q-card>
@@ -169,7 +176,7 @@
                 tvShowDetails.created_by.map((c) => c.name).join(', ')
               }}</strong>
             </p>
-            <div class="q-mt-md q-mb-none" v-if="auth.isLoggedIn()">
+            <div class="q-mt-md" v-if="auth.isLoggedIn()">
               <q-btn
                 :label="
                   tvShowDetails.is_watchlisted_by_user
@@ -178,8 +185,16 @@
                 "
                 color="grey"
                 :icon="tvShowDetails.is_watchlisted_by_user ? 'tv_off' : 'tv'"
-                @click="updateWatchlist()"
+                @click="updateWatchlist"
                 :loading="updatingWatchlist"
+              />
+            </div>
+            <div class="q-mt-md">
+              <q-btn
+                label="Announcements"
+                icon="feed"
+                color="grey"
+                @click="announcementsClick"
               />
             </div>
           </div>
@@ -241,44 +256,15 @@
                         >
                       </p>
                     </q-item-section>
-                    <q-item-section
-                      side
-                      v-if="
-                        auth.isLoggedIn() &&
-                        episode.air_date &&
-                        isAirDateDayInThePastOrPresen(episode.air_date)
-                      "
-                    >
+                    <q-item-section side>
                       <q-btn
+                        icon="more_vert"
+                        flat
                         round
-                        :color="episode.marked_as_watched ? 'green' : 'grey'"
-                        icon="check"
                         size="0.7rem"
-                        @click="
-                          markAsWatchedClick(
-                            $event,
-                            episodeIndex,
-                            season,
-                            seasonIndex
-                          )
-                        "
-                        :loading="episode.is_loading"
+                        @click.stop
                       >
-                        <q-tooltip>{{
-                          episode.marked_as_watched
-                            ? 'Remove from Watched'
-                            : 'Mark as Watched'
-                        }}</q-tooltip>
-                      </q-btn>
-                    </q-item-section>
-                  </template>
-                  <q-separator />
-                  <q-card>
-                    <q-card-section>
-                      <p class="text-body1 q-my-sm">
-                        {{ episode.overview || 'Plot unknown' }}
-                      </p>
-                      <q-btn icon="more_horiz" flat round>
+                        <q-tooltip>Menu</q-tooltip>
                         <q-menu>
                           <q-list>
                             <q-item
@@ -315,6 +301,48 @@
                           </q-list>
                         </q-menu>
                       </q-btn>
+                    </q-item-section>
+                    <q-item-section
+                      side
+                      v-if="
+                        auth.isLoggedIn() &&
+                        episode.air_date &&
+                        isAirDateDayInThePastOrPresen(episode.air_date)
+                      "
+                    >
+                      <q-btn
+                        round
+                        :color="episode.marked_as_watched ? 'green' : 'grey'"
+                        icon="check"
+                        size="0.7rem"
+                        @click="
+                          markAsWatchedClick(
+                            $event,
+                            episodeIndex,
+                            season,
+                            seasonIndex
+                          )
+                        "
+                        :loading="episode.is_loading"
+                      >
+                        <q-tooltip>{{
+                          episode.marked_as_watched
+                            ? 'Remove from Watched'
+                            : 'Mark as Watched'
+                        }}</q-tooltip>
+                      </q-btn>
+                    </q-item-section>
+                  </template>
+                  <q-separator />
+                  <q-card>
+                    <q-card-section>
+                      <p
+                        class="text-body1 q-my-sm"
+                        v-html="
+                          episode.overview ||
+                          '<i>Plot unknown at this moment</i>'
+                        "
+                      />
                     </q-card-section>
                   </q-card>
                 </q-expansion-item>
@@ -345,7 +373,9 @@ import RequestSubtitleForm from '../components/RequestSubtitleForm.vue'
 import SubtitleRequestsList from '../components/SubtitleRequestsList.vue'
 import SubtitlesList from '../components/SubtitlesList.vue'
 import SubtitleForm from '../components/SubtitleForm.vue'
+import AnnouncementsList from '../components/AnnouncementsList.vue'
 import { getEmojiFlag, countries } from 'countries-list'
+import { useQuasar } from 'quasar'
 
 export default defineComponent({
   components: {
@@ -353,9 +383,11 @@ export default defineComponent({
     SubtitleRequestsList,
     SubtitleForm,
     SubtitlesList,
+    AnnouncementsList,
   },
   setup() {
     const route = useRoute()
+    const $q = useQuasar()
     const auth = useAuthStore()
     const tab: Ref<number | null> = ref(null)
     const tvShowDetails: Ref<ITVShowDetails | null> = ref(null)
@@ -371,6 +403,7 @@ export default defineComponent({
     const isSubtitleRequestsListDialogShown: Ref<boolean> = ref(false)
     const isSubtitleDialogShown: Ref<boolean> = ref(false)
     const isSubtitlesListDialogShown: Ref<boolean> = ref(false)
+    const isAnnouncementDialogShown: Ref<boolean> = ref(false)
     const episodeForDialog = reactive<ITVShowEpisodeForDialog>({
       details: null,
       tvShowId: null,
@@ -453,28 +486,32 @@ export default defineComponent({
       if (!tvShowDetails.value) return
       updatingWatchlist.value = true
       try {
-        let response = null
         if (tvShowDetails.value.is_watchlisted_by_user) {
-          response = await api.delete(ApiEndpoints.removeFromWatchlist, {
+          await api.delete(ApiEndpoints.removeFromWatchlist, {
             data: {
               tvShowIds: [tvShowDetails.value.id],
             },
           })
         } else {
-          response = await api.post(
-            ApiEndpoints.addToWatchlist(tvShowDetails.value.id)
-          )
-        }
-
-        if (response.status !== 200 && response.status !== 201) {
-          console.log(response.statusText)
-          return
+          await api.post(ApiEndpoints.addToWatchlist(tvShowDetails.value.id))
         }
 
         tvShowDetails.value.is_watchlisted_by_user =
           !tvShowDetails.value.is_watchlisted_by_user
-      } catch (err) {
-        error.value = 'Failed to fetch.'
+
+        $q.notify({
+          message: 'Watchlist updated',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
+      } catch (err: any) {
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         updatingWatchlist.value = false
       }
@@ -505,8 +542,20 @@ export default defineComponent({
         await api.post(ApiEndpoints.markEpisodeWatched, requestBody)
 
         episodeDetails.marked_as_watched = true
+
+        $q.notify({
+          message: 'Marked as watched',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
       } catch (err: any) {
-        error.value = 'Failed to fetch.'
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         episodeDetails.is_loading = false
       }
@@ -581,9 +630,19 @@ export default defineComponent({
             })
           }
         }
+        $q.notify({
+          message: 'Marked as watched',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
       } catch (err: any) {
-        console.log(err.response)
-        error.value = 'Failed to fetch.'
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         for (const season of tvShowDetails.value.seasons) {
           if (season.season_number > episodeDetails.season_number) break
@@ -613,8 +672,20 @@ export default defineComponent({
         )
 
         episodeDetails.marked_as_watched = false
+
+        $q.notify({
+          message: 'Removed from watched',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
       } catch (err: any) {
-        error.value = 'Failed to fetch.'
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         episodeDetails.is_loading = false
       }
@@ -691,7 +762,6 @@ export default defineComponent({
 
     const uploadSubtitleClick = (episodeDetails: ITVShowEpisode) => {
       if (!tvShowDetails.value) return
-      console.log('helo')
       isSubtitleDialogShown.value = true
       episodeForDialog.details = episodeDetails
       episodeForDialog.tvShowId = tvShowDetails.value.id
@@ -708,6 +778,10 @@ export default defineComponent({
       isSubtitlesListDialogShown.value = true
       episodeForDialog.details = episodeDetails
       episodeForDialog.tvShowId = tvShowDetails.value.id
+    }
+
+    const announcementsClick = () => {
+      isAnnouncementDialogShown.value = true
     }
 
     const getCountryKey = (key: string): keyof typeof countries =>
@@ -745,6 +819,8 @@ export default defineComponent({
       uploadSubtitleClick,
       isSubtitlesListDialogShown,
       listOfSubtitlesClick,
+      announcementsClick,
+      isAnnouncementDialogShown,
     }
   },
 })

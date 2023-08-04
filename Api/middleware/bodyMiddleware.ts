@@ -4,6 +4,8 @@ import { removeFromWatchlistValidator } from './validators/watchlistValidator'
 import { subtitleRequestValidator } from './validators/subtitleRequestValidator'
 import { setDarkModeValidator } from './validators/setDarkModeValidator'
 import { CustomError } from './errorMiddleware'
+import { subtitleReportValidator } from './validators/subtitleReportValidator'
+import Joi from 'joi'
 
 const validateMarkWatched = (req: Request, res: Response, next: () => void) => {
   const { error } = markWatchedValidator.validate(req.body)
@@ -37,9 +39,22 @@ const validateSetDarkMode = (req: Request, res: Response, next: () => void) => {
   next()
 }
 
-export {
-  validateMarkWatched,
-  validateRemoveFromWatchlist,
-  validateSubtitleRequest,
-  validateSetDarkMode,
+const validateSubtitleReport = (
+  req: Request,
+  res: Response,
+  next: () => void
+) => {
+  const { error } = subtitleReportValidator.validate(req.body)
+  if (error) throw new CustomError(error.details[0].message, 400)
+  next()
 }
+
+const validateBody =
+  (validator: Joi.ObjectSchema<any>) =>
+  (req: Request, res: Response, next: () => void) => {
+    const { error } = validator.validate(req.body)
+    if (error) throw new CustomError(error.details[0].message, 400)
+    next()
+  }
+
+export { validateBody }

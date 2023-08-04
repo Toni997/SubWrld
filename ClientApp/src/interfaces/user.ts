@@ -1,5 +1,6 @@
-export interface UserInfo {
-  _id: string
+import { IID } from './common'
+
+export interface UserInfo extends IID {
   username: string
   email: string
   isAdmin: boolean
@@ -12,9 +13,14 @@ export interface AuthState {
   userInfo: null | UserInfo
 }
 
-export interface IUserRef {
-  _id: string
+export interface IUserRef extends IID {
   username: string
   reputation: number
   createdAt: string
+}
+
+export interface IUserRefWithReputation extends IID {
+  username: string
+  isAdmin: boolean
+  reputation: number
 }

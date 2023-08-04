@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 import SubtitleRequest, {
   ICreateSubtitleRequest,
 } from '../models/subtitleRequest'
-import { IUser } from '../models/user'
+import User, { IUser } from '../models/user'
 import { IAuthUserRequest } from '../interfaces/request'
 import axios from 'axios'
 import {
@@ -29,6 +29,15 @@ import {
 import { CustomError } from '../middleware/errorMiddleware'
 import { Magic, MAGIC_MIME_TYPE } from 'mmmagic'
 import { convertStringifiedBoolean } from '../utils/convertStringifiedBoolean'
+import SubtitleReport, {
+  ISubtitleReportForm,
+  ISubtitleReportWithTVShowTitle,
+} from '../models/subtitleReport'
+import { ReportStatus } from '../utils/reportStatus'
+import { IAnnouncementWithTVShowTitle } from '../models/announcement'
+import { ISubtitleReportResponse } from '../interfaces/report'
+
+const pageSize = 10
 
 const ensureAllowedMimeTypeForFiles = (files: Express.Multer.File[]) => {
   const magic = new Magic(MAGIC_MIME_TYPE)
@@ -76,7 +85,7 @@ const getSubtitlesForEpisode = asyncHandler(
 
     const subtitles = await Subtitle.aggregate([
       {
-        $match: { episodeId }, // Replace epsidoeid with the specific episodeId
+        $match: { episodeId },
       },
       {
         $lookup: {
@@ -119,6 +128,29 @@ const getSubtitlesForEpisode = asyncHandler(
   }
 )
 
+// @desc get all subtitles for a specific episode uploader by authenticated user
+// @route GET /subtitles/my/:episodeId
+// @access Private
+const getUserSubtitlesForEpisode = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const userId = req.user?._id as mongoose.Types.ObjectId
+    const episodeId = Number(req.params.episodeId)
+
+    if (!episodeId) throw new CustomError('Invalid parameter', 400)
+
+    const subtitles = await Subtitle.find({
+      userId,
+      episodeId,
+      subtitleRequestId: null,
+      filePath: { $ne: null },
+    })
+      .select('_id language release frameRate createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+
+    res.json(subtitles)
+  }
+)
+
 // @desc Add subtitle
 // @route POST /subtitles
 // @access Private
@@ -153,7 +185,6 @@ const addSubtitle = asyncHandler(
           401
         )
     }
-    subtitleRequest = subtitleRequest!
 
     if (files?.length) ensureAllowedMimeTypeForFiles(files)
 
@@ -195,8 +226,11 @@ const addSubtitle = asyncHandler(
     }
 
     const insertedSubtitle = await Subtitle.create(subtitleToInsert)
-    subtitleRequest.subtitleId = insertedSubtitle._id
-    subtitleRequest.save()
+
+    if (subtitleRequest) {
+      subtitleRequest.subtitleId = insertedSubtitle._id
+      await subtitleRequest.save()
+    }
 
     res.status(201).json(insertedSubtitle)
   }
@@ -216,10 +250,7 @@ const updateSubtitle = asyncHandler(
 
     if (!subtitleToUpdate) throw new CustomError('Subtitle not found', 404)
 
-    if (
-      user._id.toString() !== subtitleToUpdate.userId.toString() &&
-      !user.isAdmin
-    )
+    if (!user._id.equals(subtitleToUpdate.userId) && !user.isAdmin)
       throw new CustomError('Not authorized', 403)
 
     if (subtitleToUpdate.isConfirmed)
@@ -274,9 +305,18 @@ const deleteSubtitle = asyncHandler(
 
     if (!subtitle) throw new CustomError('Subtitle request not found', 404)
 
-    if (subtitle.userId.toString() !== userId.toString() && !isAdmin)
-      throw new CustomError('Not authorized', 401)
+    if (!subtitle.userId.equals(userId) && !isAdmin)
+      throw new CustomError('Not authorized', 403)
 
+    if (subtitle.subtitleRequestId) {
+      const relatedSubtitleRequest = await SubtitleRequest.findById(
+        subtitle.subtitleRequestId
+      )
+      if (relatedSubtitleRequest) {
+        relatedSubtitleRequest.subtitleId = null
+        await relatedSubtitleRequest.save()
+      }
+    }
     await subtitle.deleteOne()
 
     res.json('Removed subtitle')
@@ -306,7 +346,7 @@ const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
   const filePath = path.join(subtitlesFolderPath, subtitle.filePath)
 
   res.download(filePath, fullDownloadFileName, async err => {
-    if (err) throw new Error('Error downloading file')
+    if (err) throw new Error('Could not send file')
     subtitle.downloads += 1
     await subtitle.save()
   })
@@ -323,7 +363,7 @@ const thankSubtitleUploader = asyncHandler(
 
     if (!subtitle) throw new CustomError('Subtitle not found', 404)
 
-    if (subtitle.userId.toString() === userId.toString())
+    if (subtitle.userId.equals(userId))
       throw new CustomError("You can't thank for a subtitle you uploaded", 409)
 
     if (subtitle.thankedBy.includes(userId))
@@ -331,6 +371,12 @@ const thankSubtitleUploader = asyncHandler(
 
     subtitle.thankedBy.push(userId)
     await subtitle.save()
+
+    const uploader = await User.findById(subtitle.userId)
+    if (uploader) {
+      uploader.reputation += 1
+      uploader.save()
+    }
 
     res.status(201).json('Success')
   }
@@ -358,7 +404,204 @@ const confirmSubtitle = asyncHandler(
     subtitle.isConfirmed = true
     await subtitle.save()
 
+    const uploader = await User.findById(subtitle.userId)
+    if (uploader) {
+      uploader.reputation += 50
+      uploader.save()
+    }
+
     res.json('Success')
+  }
+)
+
+// @desc confirm subtitle
+// @route PATCH /subtitles/confirm/:subtitleId
+// @access Admin
+const fulfillRequestWithExistingSubtitle = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const userId = req.user?._id as mongoose.Types.ObjectId
+    const requestId = req.params.requestId
+    const subtitleId = req.params.subtitleId
+
+    const request = await SubtitleRequest.findById(requestId)
+    if (!request) throw new CustomError('Request not found', 404)
+
+    if (request.subtitleId)
+      throw new CustomError('This request has already been fulfilled', 409)
+
+    const subtitle = await Subtitle.findById(subtitleId)
+    if (!subtitle) throw new CustomError('Subtitle not found', 404)
+
+    if (!subtitle.userId.equals(userId))
+      throw new CustomError('Not authorized', 403)
+
+    if (subtitle.subtitleRequestId)
+      throw new CustomError(
+        'This subtitle is already related to another request',
+        409
+      )
+
+    request.subtitleId = subtitle._id
+    await request.save()
+
+    subtitle.subtitleRequestId = request._id
+    await subtitle.save()
+
+    res.json('Success')
+  }
+)
+
+// @desc get all pending subtitle reports
+// @route PATCH /subtitles/reports/pending
+// @access Admin
+const getPendingSubtitleReports = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const pageNumber = Number(req.query.page) || 1
+
+    const options = {
+      page: pageNumber,
+      limit: pageSize,
+      sort: { updatedAt: -1 },
+      populate: [
+        {
+          path: 'subtitleId',
+          select: '-thankedBy',
+          populate: {
+            path: 'userId',
+            select: '_id username isAdmin reputation',
+          },
+        },
+        { path: 'userId', select: '_id username isAdmin reputation' },
+      ],
+      lean: true,
+    }
+
+    const result = await SubtitleReport.paginate(
+      { status: ReportStatus.Pending },
+      options
+    )
+
+    const reports = result.docs as unknown as ISubtitleReportResponse[]
+
+    for (const item of reports) {
+      const response = await axios.get(
+        getTVShowDetailsUrl(item.subtitleId.tvShowId)
+      )
+      const tvShow: ITVShowDetails = response.data
+      item.subtitleId.tvShowTitle = tvShow.name
+    }
+
+    res.json(result)
+  }
+)
+
+// @desc get all approved subtitle reports
+// @route PATCH /subtitles/reports/approved
+// @access Admin
+const getApprovedSubtitleReports = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const reports = await SubtitleReport.find({
+      status: ReportStatus.Approved,
+    }).sort({ updatedAt: -1 })
+
+    res.status(201).json(reports)
+  }
+)
+
+// @desc get all rejected subtitle reports
+// @route PATCH /subtitles/reports/rejected
+// @access Admin
+const getRejectedSubtitleReports = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const reports = await SubtitleReport.find({
+      status: ReportStatus.Rejected,
+    }).sort({ updatedAt: -1 })
+
+    res.status(201).json(reports)
+  }
+)
+
+// @desc report subtitle
+// @route PATCH /subtitles/report/:subtitleId
+// @access Private
+const reportSubtitle = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const userId = req.user?._id as mongoose.Types.ObjectId
+    const subtitleId = req.params.subtitleId
+    const report: ISubtitleReportForm = req.body
+
+    const subtitle = await Subtitle.findById(subtitleId)
+
+    if (!subtitle) throw new CustomError('Subtitle not found', 404)
+
+    const foundReport = await SubtitleReport.findOne({
+      userId,
+      subtitleId,
+    })
+
+    if (foundReport)
+      throw new CustomError('You have already reported this subtitle', 409)
+
+    const insertedReport = await SubtitleReport.create({
+      userId,
+      subtitleId,
+      reason: report.reason,
+    })
+
+    res.status(201).json(insertedReport)
+  }
+)
+
+// @desc approve report
+// @route PATCH /subtitles/report/approve/:reportId
+// @access Admin
+const approveSubtitleReport = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const reportId = req.params.reportId
+
+    const report = await SubtitleReport.findById(reportId)
+
+    if (!report) throw new CustomError('Report not found', 404)
+
+    if (report.status !== ReportStatus.Pending)
+      throw new CustomError('This report has already been handled', 409)
+
+    const subtitle = await Subtitle.findById(report.subtitleId)
+    if (subtitle) {
+      if (subtitle.subtitleRequestId) {
+        const subtitleRequest = await SubtitleRequest.findById(
+          subtitle.subtitleRequestId
+        )
+        if (subtitleRequest) {
+          subtitleRequest.subtitleId = null
+          subtitleRequest.save()
+        }
+      }
+      await subtitle.deleteOne()
+    }
+
+    res.json('Success')
+  }
+)
+
+// @desc reject report
+// @route PATCH /subtitles/report/approve/:reportId
+// @access Admin
+const rejectSubtitleReport = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const reportId = req.params.reportId
+
+    const report = await SubtitleReport.findById(reportId)
+
+    if (!report) throw new CustomError('Report not found', 404)
+
+    if (report.status !== ReportStatus.Pending)
+      throw new CustomError('This report has already been handled', 409)
+
+    report.status = ReportStatus.Rejected
+    await report.save()
+
+    res.json('Report rejected')
   }
 )
 
@@ -403,7 +646,7 @@ const getSubtitleRequestsForEpisode = asyncHandler(
 
     const subtitleRequests = await SubtitleRequest.aggregate([
       {
-        $match: { episodeId }, // Replace epsidoeid with the specific episodeId
+        $match: { episodeId },
       },
       {
         $lookup: {
@@ -439,6 +682,12 @@ const getSubtitleRequestsForEpisode = asyncHandler(
         },
       },
       {
+        $unwind: {
+          path: '$subtitle.user',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $project: {
           'user.email': 0,
           'user.password': 0,
@@ -448,12 +697,33 @@ const getSubtitleRequestsForEpisode = asyncHandler(
           'subtitle.user.password': 0,
           'subtitle.user.isAdmin': 0,
           'subtitle.user.updatedAt': 0,
+          'subtitle.updatedAt': 0,
+          'subtitle.createdAt': 0,
+          'subtitle.tvShowId': 0,
+          'subtitle.season': 0,
+          'subtitle.episode': 0,
+          'subtitle.episodeId': 0,
+          'subtitle.language': 0,
+          'subtitle.frameRate': 0,
+          'subtitle.onlyForeignLanguage': 0,
+          'subtitle.release': 0,
+          'subtitle.downloads': 0,
+          'subtitle.thankedBy': 0,
+          'subtitle.subtitleRequestId': 0,
+          'subtitle.forHearingImpaired': 0,
         },
       },
       {
         $addFields: {
           isOwner: {
-            $eq: ['$userId', userId], // Create a new field isOwner to check if userId matches user._id
+            $eq: ['$userId', userId],
+          },
+          subtitle: {
+            $cond: {
+              if: { $eq: ['$subtitle', {}] },
+              then: null,
+              else: '$subtitle',
+            },
           },
         },
       },
@@ -466,6 +736,37 @@ const getSubtitleRequestsForEpisode = asyncHandler(
     ])
 
     res.json(subtitleRequests)
+  }
+)
+
+// @desc reopen a subtitle request
+// @route PATCH /subtitles/requests/reopen/:requestId
+// @access Private
+const reopenSubtitleRequest = asyncHandler(
+  async (req: IAuthUserRequest, res: Response) => {
+    const userId = req.user?._id as mongoose.Types.ObjectId
+    const requestId = req.params.requestId
+
+    const subtitleRequest = await SubtitleRequest.findById(requestId)
+
+    if (!subtitleRequest)
+      throw new CustomError('Subtitle request not found', 404)
+
+    if (!subtitleRequest.userId.equals(userId))
+      throw new CustomError('Not authorized', 403)
+
+    if (!subtitleRequest.subtitleId)
+      throw new CustomError("Can't reopen an already opened request", 409)
+
+    const relatedSubtitle = await Subtitle.findById(subtitleRequest.subtitleId)
+    if (relatedSubtitle) {
+      relatedSubtitle.subtitleRequestId = null
+      await relatedSubtitle.save()
+    }
+    subtitleRequest.subtitleId = null
+    await subtitleRequest.save()
+
+    res.json('Reopened subtitle request')
   }
 )
 
@@ -483,8 +784,18 @@ const deleteSubtitleRequest = asyncHandler(
     if (!subtitleRequest)
       throw new CustomError('Subtitle request not found', 404)
 
-    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin)
-      throw new CustomError('Not authorized', 401)
+    if (!subtitleRequest.userId.equals(userId) && !isAdmin)
+      throw new CustomError('Not authorized', 403)
+
+    if (subtitleRequest.subtitleId) {
+      const relatedSubtitle = await Subtitle.findById(
+        subtitleRequest.subtitleId
+      )
+      if (relatedSubtitle) {
+        relatedSubtitle.subtitleRequestId = null
+        await relatedSubtitle.save()
+      }
+    }
 
     await subtitleRequest.deleteOne()
 
@@ -503,4 +814,13 @@ export {
   thankSubtitleUploader,
   confirmSubtitle,
   updateSubtitle,
+  reopenSubtitleRequest,
+  reportSubtitle,
+  fulfillRequestWithExistingSubtitle,
+  getUserSubtitlesForEpisode,
+  rejectSubtitleReport,
+  approveSubtitleReport,
+  getPendingSubtitleReports,
+  getApprovedSubtitleReports,
+  getRejectedSubtitleReports,
 }

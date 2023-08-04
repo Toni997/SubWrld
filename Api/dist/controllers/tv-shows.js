@@ -16,7 +16,7 @@ exports.getTVShowSeasonDetails = exports.getTVShowDetails = exports.popularTVSho
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
-const watchedEpisodes_1 = __importDefault(require("../models/watchedEpisodes"));
+const watchedEpisode_1 = __importDefault(require("../models/watchedEpisode"));
 const watchlist_1 = __importDefault(require("../models/watchlist"));
 const limitNumberOfResults = 10;
 const addGenreNamesToShowsArray = (showsArray) => __awaiter(void 0, void 0, void 0, function* () {
@@ -87,7 +87,7 @@ const getTVShowSeasonDetails = (0, express_async_handler_1.default)((req, res) =
         res.json(seasonsDetails.episodes);
         return;
     }
-    const watchedEpisodesByUser = yield watchedEpisodes_1.default.find({
+    const watchedEpisodesByUser = yield watchedEpisode_1.default.find({
         userId: user._id,
         tvShowId,
     });

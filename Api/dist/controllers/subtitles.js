@@ -12,9 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSubtitle = exports.confirmSubtitle = exports.thankSubtitleUploader = exports.deleteSubtitle = exports.getSubtitlesForEpisode = exports.downloadSubtitle = exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
+exports.getRejectedSubtitleReports = exports.getApprovedSubtitleReports = exports.getPendingSubtitleReports = exports.approveSubtitleReport = exports.rejectSubtitleReport = exports.getUserSubtitlesForEpisode = exports.fulfillRequestWithExistingSubtitle = exports.reportSubtitle = exports.reopenSubtitleRequest = exports.updateSubtitle = exports.confirmSubtitle = exports.thankSubtitleUploader = exports.deleteSubtitle = exports.getSubtitlesForEpisode = exports.downloadSubtitle = exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const subtitleRequest_1 = __importDefault(require("../models/subtitleRequest"));
+const user_1 = __importDefault(require("../models/user"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -27,6 +28,9 @@ const multer_1 = require("../config/multer");
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
 const mmmagic_1 = require("mmmagic");
 const convertStringifiedBoolean_1 = require("../utils/convertStringifiedBoolean");
+const subtitleReport_1 = __importDefault(require("../models/subtitleReport"));
+const reportStatus_1 = require("../utils/reportStatus");
+const pageSize = 10;
 const ensureAllowedMimeTypeForFiles = (files) => {
     const magic = new mmmagic_1.Magic(mmmagic_1.MAGIC_MIME_TYPE);
     for (const file of files) {
@@ -66,7 +70,7 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
         throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
     const subtitles = yield subtitle_1.default.aggregate([
         {
-            $match: { episodeId }, // Replace epsidoeid with the specific episodeId
+            $match: { episodeId },
         },
         {
             $lookup: {
@@ -107,6 +111,26 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
     res.json(subtitles);
 }));
 exports.getSubtitlesForEpisode = getSubtitlesForEpisode;
+// @desc get all subtitles for a specific episode uploader by authenticated user
+// @route GET /subtitles/my/:episodeId
+// @access Private
+const getUserSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b._id;
+    const episodeId = Number(req.params.episodeId);
+    if (!episodeId)
+        throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
+    const subtitles = yield subtitle_1.default.find({
+        userId,
+        episodeId,
+        subtitleRequestId: null,
+        filePath: { $ne: null },
+    })
+        .select('_id language release frameRate createdAt updatedAt')
+        .sort({ updatedAt: -1 });
+    res.json(subtitles);
+}));
+exports.getUserSubtitlesForEpisode = getUserSubtitlesForEpisode;
 // @desc Add subtitle
 // @route POST /subtitles
 // @access Private
@@ -127,7 +151,6 @@ const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter
         if (!(files === null || files === void 0 ? void 0 : files.length))
             throw new errorMiddleware_1.CustomError('Subtitles related to a subtitle request must have at least one file attached', 401);
     }
-    subtitleRequest = subtitleRequest;
     if (files === null || files === void 0 ? void 0 : files.length)
         ensureAllowedMimeTypeForFiles(files);
     const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitle.tvShowId, subtitle.season, subtitle.episode));
@@ -155,8 +178,10 @@ const addSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter
         subtitleToInsert.filePath = zipFilePath;
     }
     const insertedSubtitle = yield subtitle_1.default.create(subtitleToInsert);
-    subtitleRequest.subtitleId = insertedSubtitle._id;
-    subtitleRequest.save();
+    if (subtitleRequest) {
+        subtitleRequest.subtitleId = insertedSubtitle._id;
+        yield subtitleRequest.save();
+    }
     res.status(201).json(insertedSubtitle);
 }));
 exports.addSubtitle = addSubtitle;
@@ -171,8 +196,7 @@ const updateSubtitle = (0, express_async_handler_1.default)((req, res) => __awai
     const subtitleToUpdate = yield subtitle_1.default.findById(subtitleId);
     if (!subtitleToUpdate)
         throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
-    if (user._id.toString() !== subtitleToUpdate.userId.toString() &&
-        !user.isAdmin)
+    if (!user._id.equals(subtitleToUpdate.userId) && !user.isAdmin)
         throw new errorMiddleware_1.CustomError('Not authorized', 403);
     if (subtitleToUpdate.isConfirmed)
         throw new errorMiddleware_1.CustomError("Can't update a confirmed subtitle", 409);
@@ -202,15 +226,22 @@ exports.updateSubtitle = updateSubtitle;
 // @route DELETE /subtitles/:requestId
 // @access Private
 const deleteSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b, _c;
-    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b._id;
-    const isAdmin = (_c = req.user) === null || _c === void 0 ? void 0 : _c.isAdmin;
+    var _c, _d;
+    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c._id;
+    const isAdmin = (_d = req.user) === null || _d === void 0 ? void 0 : _d.isAdmin;
     const subtitleId = req.params.subtitleId;
     const subtitle = yield subtitle_1.default.findById(subtitleId);
     if (!subtitle)
         throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
-    if (subtitle.userId.toString() !== userId.toString() && !isAdmin)
-        throw new errorMiddleware_1.CustomError('Not authorized', 401);
+    if (!subtitle.userId.equals(userId) && !isAdmin)
+        throw new errorMiddleware_1.CustomError('Not authorized', 403);
+    if (subtitle.subtitleRequestId) {
+        const relatedSubtitleRequest = yield subtitleRequest_1.default.findById(subtitle.subtitleRequestId);
+        if (relatedSubtitleRequest) {
+            relatedSubtitleRequest.subtitleId = null;
+            yield relatedSubtitleRequest.save();
+        }
+    }
     yield subtitle.deleteOne();
     res.json('Removed subtitle');
 }));
@@ -234,7 +265,7 @@ const downloadSubtitle = (0, express_async_handler_1.default)((req, res) => __aw
     const filePath = path_1.default.join(multer_1.subtitlesFolderPath, subtitle.filePath);
     res.download(filePath, fullDownloadFileName, (err) => __awaiter(void 0, void 0, void 0, function* () {
         if (err)
-            throw new Error('Error downloading file');
+            throw new Error('Could not send file');
         subtitle.downloads += 1;
         yield subtitle.save();
     }));
@@ -244,18 +275,23 @@ exports.downloadSubtitle = downloadSubtitle;
 // @route POST /subtitles/thanks/:subtitleId
 // @access Public
 const thankSubtitleUploader = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
-    const userId = (_d = req.user) === null || _d === void 0 ? void 0 : _d._id;
+    var _e;
+    const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e._id;
     const subtitleId = req.params.subtitleId;
     const subtitle = yield subtitle_1.default.findById(subtitleId);
     if (!subtitle)
         throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
-    if (subtitle.userId.toString() === userId.toString())
+    if (subtitle.userId.equals(userId))
         throw new errorMiddleware_1.CustomError("You can't thank for a subtitle you uploaded", 409);
     if (subtitle.thankedBy.includes(userId))
         throw new errorMiddleware_1.CustomError('Already thanked for this subtitle', 409);
     subtitle.thankedBy.push(userId);
     yield subtitle.save();
+    const uploader = yield user_1.default.findById(subtitle.userId);
+    if (uploader) {
+        uploader.reputation += 1;
+        uploader.save();
+    }
     res.status(201).json('Success');
 }));
 exports.thankSubtitleUploader = thankSubtitleUploader;
@@ -273,21 +309,169 @@ const confirmSubtitle = (0, express_async_handler_1.default)((req, res) => __awa
         throw new errorMiddleware_1.CustomError("Can't confirm a subtitle that's a work in progress", 409);
     subtitle.isConfirmed = true;
     yield subtitle.save();
+    const uploader = yield user_1.default.findById(subtitle.userId);
+    if (uploader) {
+        uploader.reputation += 50;
+        uploader.save();
+    }
     res.json('Success');
 }));
 exports.confirmSubtitle = confirmSubtitle;
+// @desc confirm subtitle
+// @route PATCH /subtitles/confirm/:subtitleId
+// @access Admin
+const fulfillRequestWithExistingSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _f;
+    const userId = (_f = req.user) === null || _f === void 0 ? void 0 : _f._id;
+    const requestId = req.params.requestId;
+    const subtitleId = req.params.subtitleId;
+    const request = yield subtitleRequest_1.default.findById(requestId);
+    if (!request)
+        throw new errorMiddleware_1.CustomError('Request not found', 404);
+    if (request.subtitleId)
+        throw new errorMiddleware_1.CustomError('This request has already been fulfilled', 409);
+    const subtitle = yield subtitle_1.default.findById(subtitleId);
+    if (!subtitle)
+        throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
+    if (!subtitle.userId.equals(userId))
+        throw new errorMiddleware_1.CustomError('Not authorized', 403);
+    if (subtitle.subtitleRequestId)
+        throw new errorMiddleware_1.CustomError('This subtitle is already related to another request', 409);
+    request.subtitleId = subtitle._id;
+    yield request.save();
+    subtitle.subtitleRequestId = request._id;
+    yield subtitle.save();
+    res.json('Success');
+}));
+exports.fulfillRequestWithExistingSubtitle = fulfillRequestWithExistingSubtitle;
+// @desc get all pending subtitle reports
+// @route PATCH /subtitles/reports/pending
+// @access Admin
+const getPendingSubtitleReports = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const pageNumber = Number(req.query.page) || 1;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        sort: { updatedAt: -1 },
+        populate: [
+            {
+                path: 'subtitleId',
+                select: '-thankedBy',
+                populate: {
+                    path: 'userId',
+                    select: '_id username isAdmin reputation',
+                },
+            },
+            { path: 'userId', select: '_id username isAdmin reputation' },
+        ],
+        lean: true,
+    };
+    const result = yield subtitleReport_1.default.paginate({ status: reportStatus_1.ReportStatus.Pending }, options);
+    const reports = result.docs;
+    for (const item of reports) {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.subtitleId.tvShowId));
+        const tvShow = response.data;
+        item.subtitleId.tvShowTitle = tvShow.name;
+    }
+    res.json(result);
+}));
+exports.getPendingSubtitleReports = getPendingSubtitleReports;
+// @desc get all approved subtitle reports
+// @route PATCH /subtitles/reports/approved
+// @access Admin
+const getApprovedSubtitleReports = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const reports = yield subtitleReport_1.default.find({
+        status: reportStatus_1.ReportStatus.Approved,
+    }).sort({ updatedAt: -1 });
+    res.status(201).json(reports);
+}));
+exports.getApprovedSubtitleReports = getApprovedSubtitleReports;
+// @desc get all rejected subtitle reports
+// @route PATCH /subtitles/reports/rejected
+// @access Admin
+const getRejectedSubtitleReports = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const reports = yield subtitleReport_1.default.find({
+        status: reportStatus_1.ReportStatus.Rejected,
+    }).sort({ updatedAt: -1 });
+    res.status(201).json(reports);
+}));
+exports.getRejectedSubtitleReports = getRejectedSubtitleReports;
+// @desc report subtitle
+// @route PATCH /subtitles/report/:subtitleId
+// @access Private
+const reportSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _g;
+    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
+    const subtitleId = req.params.subtitleId;
+    const report = req.body;
+    const subtitle = yield subtitle_1.default.findById(subtitleId);
+    if (!subtitle)
+        throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
+    const foundReport = yield subtitleReport_1.default.findOne({
+        userId,
+        subtitleId,
+    });
+    if (foundReport)
+        throw new errorMiddleware_1.CustomError('You have already reported this subtitle', 409);
+    const insertedReport = yield subtitleReport_1.default.create({
+        userId,
+        subtitleId,
+        reason: report.reason,
+    });
+    res.status(201).json(insertedReport);
+}));
+exports.reportSubtitle = reportSubtitle;
+// @desc approve report
+// @route PATCH /subtitles/report/approve/:reportId
+// @access Admin
+const approveSubtitleReport = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const reportId = req.params.reportId;
+    const report = yield subtitleReport_1.default.findById(reportId);
+    if (!report)
+        throw new errorMiddleware_1.CustomError('Report not found', 404);
+    if (report.status !== reportStatus_1.ReportStatus.Pending)
+        throw new errorMiddleware_1.CustomError('This report has already been handled', 409);
+    const subtitle = yield subtitle_1.default.findById(report.subtitleId);
+    if (subtitle) {
+        if (subtitle.subtitleRequestId) {
+            const subtitleRequest = yield subtitleRequest_1.default.findById(subtitle.subtitleRequestId);
+            if (subtitleRequest) {
+                subtitleRequest.subtitleId = null;
+                subtitleRequest.save();
+            }
+        }
+        yield subtitle.deleteOne();
+    }
+    res.json('Success');
+}));
+exports.approveSubtitleReport = approveSubtitleReport;
+// @desc reject report
+// @route PATCH /subtitles/report/approve/:reportId
+// @access Admin
+const rejectSubtitleReport = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const reportId = req.params.reportId;
+    const report = yield subtitleReport_1.default.findById(reportId);
+    if (!report)
+        throw new errorMiddleware_1.CustomError('Report not found', 404);
+    if (report.status !== reportStatus_1.ReportStatus.Pending)
+        throw new errorMiddleware_1.CustomError('This report has already been handled', 409);
+    report.status = reportStatus_1.ReportStatus.Rejected;
+    yield report.save();
+    res.json('Report rejected');
+}));
+exports.rejectSubtitleReport = rejectSubtitleReport;
 // @desc add subtite request
 // @route POST /subtitles/requests
 // @access Public
 const addSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e;
+    var _h;
     const user = req.user;
     const subtitleRequest = req.body;
     const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitleRequest.tvShowId, subtitleRequest.season, subtitleRequest.episode));
     const episodeDetails = response.data;
     subtitleRequest.userId = user._id;
     subtitleRequest.episodeId = episodeDetails.id;
-    subtitleRequest.comment = ((_e = subtitleRequest.comment) === null || _e === void 0 ? void 0 : _e.trim()) || null;
+    subtitleRequest.comment = ((_h = subtitleRequest.comment) === null || _h === void 0 ? void 0 : _h.trim()) || null;
     const insertedSubtitleRequest = yield subtitleRequest_1.default.create(subtitleRequest);
     res.status(201).json(insertedSubtitleRequest);
 }));
@@ -296,14 +480,14 @@ exports.addSubtitleRequest = addSubtitleRequest;
 // @route GET /subtitles/requests/:episodeId
 // @access Public
 const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f;
-    const userId = (_f = req.user) === null || _f === void 0 ? void 0 : _f._id;
+    var _j;
+    const userId = (_j = req.user) === null || _j === void 0 ? void 0 : _j._id;
     const episodeId = Number(req.params.episodeId);
     if (!episodeId)
         throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
     const subtitleRequests = yield subtitleRequest_1.default.aggregate([
         {
-            $match: { episodeId }, // Replace epsidoeid with the specific episodeId
+            $match: { episodeId },
         },
         {
             $lookup: {
@@ -339,6 +523,12 @@ const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req,
             },
         },
         {
+            $unwind: {
+                path: '$subtitle.user',
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
             $project: {
                 'user.email': 0,
                 'user.password': 0,
@@ -348,12 +538,33 @@ const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req,
                 'subtitle.user.password': 0,
                 'subtitle.user.isAdmin': 0,
                 'subtitle.user.updatedAt': 0,
+                'subtitle.updatedAt': 0,
+                'subtitle.createdAt': 0,
+                'subtitle.tvShowId': 0,
+                'subtitle.season': 0,
+                'subtitle.episode': 0,
+                'subtitle.episodeId': 0,
+                'subtitle.language': 0,
+                'subtitle.frameRate': 0,
+                'subtitle.onlyForeignLanguage': 0,
+                'subtitle.release': 0,
+                'subtitle.downloads': 0,
+                'subtitle.thankedBy': 0,
+                'subtitle.subtitleRequestId': 0,
+                'subtitle.forHearingImpaired': 0,
             },
         },
         {
             $addFields: {
                 isOwner: {
-                    $eq: ['$userId', userId], // Create a new field isOwner to check if userId matches user._id
+                    $eq: ['$userId', userId],
+                },
+                subtitle: {
+                    $cond: {
+                        if: { $eq: ['$subtitle', {}] },
+                        then: null,
+                        else: '$subtitle',
+                    },
                 },
             },
         },
@@ -367,19 +578,50 @@ const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req,
     res.json(subtitleRequests);
 }));
 exports.getSubtitleRequestsForEpisode = getSubtitleRequestsForEpisode;
-// @desc delete a subtitle request
-// @route DELETE /subtitles/requests/:requestId
+// @desc reopen a subtitle request
+// @route PATCH /subtitles/requests/reopen/:requestId
 // @access Private
-const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g, _h;
-    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
-    const isAdmin = (_h = req.user) === null || _h === void 0 ? void 0 : _h.isAdmin;
+const reopenSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _k;
+    const userId = (_k = req.user) === null || _k === void 0 ? void 0 : _k._id;
     const requestId = req.params.requestId;
     const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
     if (!subtitleRequest)
         throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
-    if (subtitleRequest.userId.toString() !== userId.toString() && !isAdmin)
-        throw new errorMiddleware_1.CustomError('Not authorized', 401);
+    if (!subtitleRequest.userId.equals(userId))
+        throw new errorMiddleware_1.CustomError('Not authorized', 403);
+    if (!subtitleRequest.subtitleId)
+        throw new errorMiddleware_1.CustomError("Can't reopen an already opened request", 409);
+    const relatedSubtitle = yield subtitle_1.default.findById(subtitleRequest.subtitleId);
+    if (relatedSubtitle) {
+        relatedSubtitle.subtitleRequestId = null;
+        yield relatedSubtitle.save();
+    }
+    subtitleRequest.subtitleId = null;
+    yield subtitleRequest.save();
+    res.json('Reopened subtitle request');
+}));
+exports.reopenSubtitleRequest = reopenSubtitleRequest;
+// @desc delete a subtitle request
+// @route DELETE /subtitles/requests/:requestId
+// @access Private
+const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _l, _m;
+    const userId = (_l = req.user) === null || _l === void 0 ? void 0 : _l._id;
+    const isAdmin = (_m = req.user) === null || _m === void 0 ? void 0 : _m.isAdmin;
+    const requestId = req.params.requestId;
+    const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
+    if (!subtitleRequest)
+        throw new errorMiddleware_1.CustomError('Subtitle request not found', 404);
+    if (!subtitleRequest.userId.equals(userId) && !isAdmin)
+        throw new errorMiddleware_1.CustomError('Not authorized', 403);
+    if (subtitleRequest.subtitleId) {
+        const relatedSubtitle = yield subtitle_1.default.findById(subtitleRequest.subtitleId);
+        if (relatedSubtitle) {
+            relatedSubtitle.subtitleRequestId = null;
+            yield relatedSubtitle.save();
+        }
+    }
     yield subtitleRequest.deleteOne();
     res.json('Removed subtitle request');
 }));

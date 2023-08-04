@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { api, ApiEndpoints } from '../boot/axios'
 import { AuthState } from 'src/interfaces/user'
+import { convertStringifiedBoolean } from 'src/utils/convertStringifiedBoolean'
 
 export const useAuthStore = defineStore({
   id: 'auth',
@@ -18,7 +19,7 @@ export const useAuthStore = defineStore({
           username,
           password,
         })
-        this.loadUserInfo(data)
+        this.loadUserInfo(data, true)
         this.router.push('/')
       } catch (error: any) {
         throw new Error(error.response ? 'Wrong credentials' : 'Server error')
@@ -26,16 +27,19 @@ export const useAuthStore = defineStore({
         this.isLoading = false
       }
     },
-    loadUserInfo(userInfo: any): void {
+    loadUserInfo(userInfo: any, isFromLogin = false): void {
+      console.log('USER', userInfo)
       this.userInfo = {
         _id: userInfo._id,
         username: userInfo.username,
         email: userInfo.email,
         isAdmin: userInfo.isAdmin,
       }
-      this.darkMode = userInfo.darkMode
       userInfo.token && localStorage.setItem('token', userInfo.token)
-      localStorage.setItem('darkMode', userInfo.darkMode.toString())
+      if (isFromLogin) {
+        localStorage.setItem('darkMode', userInfo.darkMode.toString())
+      }
+      this.initDarkMode(userInfo.darkMode)
     },
     async signup(
       username: string,
@@ -85,10 +89,14 @@ export const useAuthStore = defineStore({
         this.isSettingDarkMode = false
       }
     },
-    loadDarkModeFromStorage() {
+    initDarkMode(defaultValue = false) {
       const darkModeFromStorage = localStorage.getItem('darkMode')
-      const darkModeToBool = Boolean(darkModeFromStorage)
-      this.darkMode = darkModeToBool
+      if (darkModeFromStorage) {
+        const darkModeToBool = convertStringifiedBoolean(darkModeFromStorage)
+        this.darkMode = darkModeToBool
+      } else {
+        this.darkMode = defaultValue
+      }
     },
   },
 })

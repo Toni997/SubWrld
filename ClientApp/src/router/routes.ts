@@ -8,6 +8,7 @@ import TVShowsPage from '../pages/TVShowsPage.vue'
 import { useAuthStore } from 'src/stores/auth-store'
 import TVShowDetailsPageVue from 'src/pages/TVShowDetailsPage.vue'
 import WatchlistPage from 'src/pages/WatchlistPage.vue'
+import ReportsPage from 'src/pages/ReportsPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -54,6 +55,17 @@ const routes: RouteRecordRaw[] = [
             beforeEnter: (to, from, next): any => {
               const auth = useAuthStore()
               if (auth.isLoggedIn()) {
+                next()
+              }
+              next('/')
+            },
+          },
+          {
+            path: '/reports',
+            component: ReportsPage,
+            beforeEnter: (to, from, next): any => {
+              const auth = useAuthStore()
+              if (auth.isAdmin()) {
                 next()
               }
               next('/')

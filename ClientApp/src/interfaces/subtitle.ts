@@ -1,5 +1,5 @@
 import { IID, ILanguageSelection, ITimestamps } from './common'
-import { IUserRef } from './user'
+import { IUserRef, IUserRefWithReputation } from './user'
 
 export interface ISubtitleForm {
   tvShowId: number
@@ -49,4 +49,23 @@ export interface ISubtitle extends IID, ITimestamps {
   thankedByCount: number
   isThankedByUser: boolean
   isConfirmed: boolean
+}
+
+export interface ISubtitleRef extends IID, ITimestamps {
+  userId: IUserRefWithReputation
+  tvShowId: number
+  season: number
+  episode: number
+  episodeId: number
+  language: string
+  frameRate: number
+  forHearingImpaired: boolean
+  isWorkInProgress: boolean
+  onlyForeignLanguage: boolean
+  uploaderIsAuthor: boolean
+  release: string
+  filePath: string | null
+  isConfirmed: boolean
+  downloads: number
+  tvShowTitle?: string
 }

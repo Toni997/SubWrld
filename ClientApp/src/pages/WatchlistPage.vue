@@ -80,6 +80,8 @@ import { defineComponent, onMounted, ref, Ref, watch } from 'vue'
 import { IWatchlistWithTVShowDetails } from '../interfaces/tv-show'
 import { api, ApiEndpoints } from '../boot/axios'
 import { useRouter } from 'vue-router'
+import moment from 'moment'
+import { useQuasar } from 'quasar'
 
 const columns = [
   {
@@ -90,9 +92,9 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'title',
+    name: 'tvShow',
     required: true,
-    label: 'Title',
+    label: 'TV Show',
     align: 'left',
     field: (row: IWatchlistWithTVShowDetails) => row.title,
     sortable: true,
@@ -119,18 +121,24 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'watchlistedOn',
+    name: 'watchlistedFromNow',
     required: true,
-    align: 'left',
-    label: 'Watchlisted On',
-    field: (row: IWatchlistWithTVShowDetails) => row.createdAt.split('T')[0],
+    label: 'Watchlisted',
+    field: (row: IWatchlistWithTVShowDetails) => row.createdAt,
     sortable: true,
+    format: (val: string) => moment(val).fromNow(),
+    sort: (a: string, b: string) => {
+      const timeA = moment(a)
+      const timeB = moment(b)
+      return timeA.isBefore(timeB)
+    },
   },
 ]
 
 export default defineComponent({
   setup() {
     const router = useRouter()
+    const $q = useQuasar()
     const rows: Ref<readonly IWatchlistWithTVShowDetails[] | undefined> =
       ref(undefined)
     const isLoading: Ref<boolean> = ref(false)
@@ -178,21 +186,26 @@ export default defineComponent({
     const removeSelected = async () => {
       isLoading.value = true
       try {
-        const response = await api.delete(ApiEndpoints.removeFromWatchlist, {
+        await api.delete(ApiEndpoints.removeFromWatchlist, {
           data: {
             tvShowIds: selected.value.map((s) => s.tvShowId),
           },
         })
-
-        if (response.status !== 200 && response.status !== 201) {
-          console.log(response.statusText)
-          return
-        }
-
+        $q.notify({
+          message: 'Removed from watchlist',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
         await loadWatchlist()
         selected.value = []
-      } catch (err) {
-        error.value = 'Failed to fetch.'
+      } catch (err: any) {
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         isLoading.value = false
       }

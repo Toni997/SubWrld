@@ -2,26 +2,38 @@
   <q-card>
     <q-dialog v-model="showConfirmDialog">
       <confirm-dialog
-        v-if="showConfirmDialog"
         message="Are you sure you want to remove this request?"
         @on-confirmed="deleteSubtitleRequest"
       />
     </q-dialog>
 
     <q-dialog v-model="isRequestSubtitleDialogShown" persistent>
-      <request-subtitle-form
-        style="width: min(600px, 100%)"
-        :episode="episode"
-        @request-saved="onRequestSaved"
-      />
+      <q-scroll-area style="width: min(600px, 100%); height: 100%">
+        <request-subtitle-form
+          style="width: min(600px, 100%)"
+          :episode="episode"
+          @request-saved="onRequestSaved"
+        />
+      </q-scroll-area>
     </q-dialog>
 
     <q-dialog v-model="isSubtitleFormShowed" persistent>
-      <subtitle-form
+      <q-scroll-area style="width: min(600px, 100%); height: 100%">
+        <subtitle-form
+          style="width: min(600px, 100%)"
+          :episode="episode"
+          :relatedRequestId="relatedRequestId"
+          @subtitle-saved="onSubtitleSaved"
+        />
+      </q-scroll-area>
+    </q-dialog>
+
+    <q-dialog v-model="isSelectSubtitleShown">
+      <select-subtitle
         style="width: min(600px, 100%)"
         :episode="episode"
-        :relatedRequestId="relatedRequestId"
-        @subtitle-saved="onSubtitleSaved"
+        :requestId="requestIdToFulfill"
+        @on-submit="(requestId) => onFulfilledWithExistingSubtitle(requestId)"
       />
     </q-dialog>
 
@@ -102,28 +114,38 @@
               </q-btn>
             </q-td>
             <q-td v-for="col in props.cols" :key="col.name" :props="props">
-              <span v-if="col.name !== 'actions'">{{ col.value }}</span>
+              <span v-if="col.name !== 'actions' && col.name !== 'download'">{{
+                col.value
+              }}</span>
               <span v-if="col.name === 'actions'">
                 <q-btn icon="more_horiz" flat round>
                   <q-menu>
                     <q-list>
                       <q-item
-                        v-if="auth.userInfo?._id !== props.row.userId"
+                        v-if="!props.row.isOwner && !props.row.subtitle"
                         clickable
                         @click="uploadSubtitleClick(props.row)"
                         v-close-popup
                       >
-                        <q-item-section>Upload Subtitle</q-item-section>
+                        <q-item-section>Upload New Subtitle</q-item-section>
                       </q-item>
                       <q-item
-                        v-if="auth.userInfo?._id !== props.row.userId"
+                        v-if="!props.row.isOwner && !props.row.subtitle"
                         clickable
-                        @click="() => console.log(props.row)"
+                        @click="selectSubtitleClick(props.row)"
                         v-close-popup
                       >
                         <q-item-section>
-                          Choose Uploaded Subtitle
+                          Select Uploaded Subtitle
                         </q-item-section>
+                      </q-item>
+                      <q-item
+                        v-if="props.row.isOwner && props.row.subtitle"
+                        clickable
+                        @click="reopenClick(props.row)"
+                        v-close-popup
+                      >
+                        <q-item-section>Reopen</q-item-section>
                       </q-item>
                       <q-item
                         v-if="
@@ -138,8 +160,22 @@
                       </q-item>
                       <q-separator />
                     </q-list>
-                  </q-menu> </q-btn
-              ></span>
+                  </q-menu>
+                </q-btn>
+              </span>
+              <span v-if="col.name === 'download'">
+                <q-btn
+                  v-if="props.row.subtitleId"
+                  :href="ApiEndpoints.downloadSubtitle(props.row.subtitleId)"
+                  icon="download"
+                  color="primary"
+                  flat
+                  round
+                >
+                  <q-tooltip>Click to Download</q-tooltip>
+                </q-btn>
+                <span v-if="!props.row.subtitleId">-</span>
+              </span>
             </q-td>
           </q-tr>
           <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
@@ -177,10 +213,16 @@ import { useQuasar } from 'quasar'
 import RequestSubtitleForm from '../components/RequestSubtitleForm.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import SubtitleForm from '../components/SubtitleForm.vue'
+import SelectSubtitle from '../components/SelectSubtitle.vue'
 import { ISubtitle } from '../interfaces/subtitle'
 
 export default defineComponent({
-  components: { RequestSubtitleForm, SubtitleForm, ConfirmDialog },
+  components: {
+    RequestSubtitleForm,
+    SubtitleForm,
+    SelectSubtitle,
+    ConfirmDialog,
+  },
 
   props: {
     episode: {
@@ -199,6 +241,8 @@ export default defineComponent({
     const isRequestSubtitleDialogShown: Ref<boolean> = ref(false)
     const showConfirmDialog: Ref<boolean> = ref(false)
     const isSubtitleFormShowed: Ref<boolean> = ref(false)
+    const isSelectSubtitleShown: Ref<boolean> = ref(false)
+    const requestIdToFulfill: Ref<string> = ref('')
     const relatedRequestId: Ref<string | undefined> = ref(undefined)
     let requestIdToDelete: string | null = null
     const columnExpanded = reactive<{
@@ -239,20 +283,6 @@ export default defineComponent({
         sortable: true,
       },
       {
-        name: 'isFulfilled',
-        required: true,
-        label: 'Fulfilled',
-        field: (row: ISubtitleRequest) => (row.isFulfilled ? 'Yes' : 'No'),
-        sortable: true,
-      },
-      {
-        name: 'uploadedBy',
-        required: true,
-        label: 'Uploaded By',
-        field: (row: ISubtitleRequest) => (row.isFulfilled ? 'Yes' : 'No'),
-        sortable: true,
-      },
-      {
         name: 'requestedBy',
         required: true,
         label: 'Requested By',
@@ -262,12 +292,39 @@ export default defineComponent({
         sortable: true,
       },
       {
+        name: 'fulfilledBy',
+        required: true,
+        label: 'Fulfilled By',
+        field: (row: ISubtitleRequest) =>
+          row.subtitle
+            ? row.subtitle.user.username +
+              (auth.userInfo?.username === row.subtitle.user.username
+                ? ' (You)'
+                : '')
+            : '-',
+        sortable: true,
+      },
+      { name: 'download', label: 'Download Subtitle', required: true },
+      {
         name: 'requestedFromNow',
         required: true,
         label: 'Requested',
         field: (row: ISubtitleRequest) => row.createdAt,
         sortable: true,
-        format: (val: string, row: ISubtitleRequest) => moment(val).fromNow(),
+        format: (val: string) => moment(val).fromNow(),
+        sort: (a: string, b: string) => {
+          const timeA = moment(a)
+          const timeB = moment(b)
+          return timeA.isBefore(timeB)
+        },
+      },
+      {
+        name: 'updatedFromNow',
+        required: true,
+        label: 'Updated',
+        field: (row: ISubtitleRequest) => row.updatedAt,
+        sortable: true,
+        format: (val: string) => moment(val).fromNow(),
         sort: (a: string, b: string) => {
           const timeA = moment(a)
           const timeB = moment(b)
@@ -309,7 +366,6 @@ export default defineComponent({
         const response = await api.delete(
           ApiEndpoints.deleteSubtitleRequest(requestIdToDelete as string)
         )
-        rows.value = response.data
         $q.notify({
           message: 'Subtitle request deleted',
           position: 'bottom',
@@ -318,7 +374,12 @@ export default defineComponent({
         })
         await loadSubtitleRequests()
       } catch (err: any) {
-        error.value = err.response?.data.message || 'Error occurred'
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         isLoading.value = false
       }
@@ -335,9 +396,45 @@ export default defineComponent({
       await loadSubtitleRequests()
     }
 
+    const onFulfilledWithExistingSubtitle = async (requestId: string) => {
+      episode.value.justAddedSubtitleRequestId = requestId
+      isSelectSubtitleShown.value = false
+      await loadSubtitleRequests()
+    }
+
     const uploadSubtitleClick = (subtitle: ISubtitle) => {
       relatedRequestId.value = subtitle._id
       isSubtitleFormShowed.value = true
+    }
+
+    const reopenClick = async (request: ISubtitleRequest) => {
+      if (isLoading.value) return
+      isLoading.value = true
+      try {
+        await api.patch(ApiEndpoints.reopenSubtitleRequest(request._id))
+        request.subtitle = null
+        request.subtitleId = null
+        $q.notify({
+          message: 'Subtitle request reopened',
+          position: 'bottom',
+          color: 'green',
+          timeout: 3000,
+        })
+      } catch (err: any) {
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    const selectSubtitleClick = (request: ISubtitleRequest) => {
+      requestIdToFulfill.value = request._id
+      isSelectSubtitleShown.value = true
     }
 
     const getLanguageKey = (key: string): keyof typeof languages =>
@@ -359,6 +456,12 @@ export default defineComponent({
       onSubtitleSaved,
       relatedRequestId,
       uploadSubtitleClick,
+      ApiEndpoints,
+      reopenClick,
+      isSelectSubtitleShown,
+      requestIdToFulfill,
+      onFulfilledWithExistingSubtitle,
+      selectSubtitleClick,
     }
   },
 })
@@ -383,4 +486,3 @@ export default defineComponent({
   }
 }
 </style>
-../interfaces/subtitleRequest

@@ -1,5 +1,5 @@
 import mongoose, { Schema, model, mongo } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/mongoose'
+import { IID, ITimestamps } from '../interfaces/common'
 
 export interface ICreateSubtitleForm {
   tvShowId: string

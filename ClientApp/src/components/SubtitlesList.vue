@@ -9,11 +9,20 @@
     </q-dialog>
 
     <q-dialog v-model="isSubtitleFormShowed" persistent>
-      <subtitle-form
+      <q-scroll-area style="width: min(600px, 100%); height: 100%">
+        <subtitle-form
+          :episode="episode"
+          :subtitle="subtitleForDialog"
+          @subtitle-saved="onSubtitleSaved"
+        />
+      </q-scroll-area>
+    </q-dialog>
+
+    <q-dialog v-model="isReportDialogShown" persistent>
+      <report-subtitle-form
         style="width: min(600px, 100%)"
-        :episode="episode"
-        :subtitle="subtitleForDialog"
-        @subtitle-saved="onSubtitleSaved"
+        :subtitleId="subtitleIdToReport"
+        @on-submit="onReportSaved"
       />
     </q-dialog>
 
@@ -47,170 +56,179 @@
         color="primary"
         @click="addClick"
       ></q-btn>
-      <q-table
-        class="q-mt-md text-body1"
-        bordered
-        :loading="isLoading"
-        ref="tableRef"
-        :rows="rows"
-        :columns="columns"
-        row-key="id"
-      >
-        <template v-slot:loading>
-          <q-inner-loading showing color="primary" />
-        </template>
+      <q-scroll-area style="width: 100%; height: 600px">
+        <q-table
+          class="q-mt-md text-body1"
+          bordered
+          :loading="isLoading"
+          ref="tableRef"
+          :rows="rows"
+          :columns="columns"
+          row-key="id"
+        >
+          <template v-slot:loading>
+            <q-inner-loading showing color="primary" />
+          </template>
 
-        <template v-slot:header="props">
-          <q-tr :props="props">
-            <q-th auto-width />
-            <q-th v-for="col in props.cols" :key="col.name" :props="props">
-              {{ col.label }}
-            </q-th>
-          </q-tr>
-        </template>
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th auto-width />
+              <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                {{ col.label }}
+              </q-th>
+            </q-tr>
+          </template>
 
-        <template v-slot:body="props">
-          <q-tr
-            :props="props"
-            :class="{
-              'just-added': props.row._id === episode.justAddedSubtitleId,
-            }"
-          >
-            <q-td auto-width>
-              <q-btn
-                size="sm"
-                color="primary"
-                round
-                dense
-                @click="
-                  columnExpanded[props.rowIndex] =
-                    !columnExpanded[props.rowIndex]
-                "
-                :icon="columnExpanded[props.rowIndex] ? 'remove' : 'add'"
-              >
-                <q-tooltip>See release</q-tooltip>
-              </q-btn>
-            </q-td>
-            <q-td v-for="col in props.cols" :key="col.name" :props="props">
-              <span
-                v-if="
-                  col.name !== 'actions' &&
-                  col.name !== 'download' &&
-                  col.name !== 'uploadedBy'
-                "
-              >
-                {{ col.value }}
-              </span>
-              <span v-if="col.name === 'uploadedBy'">
+          <template v-slot:body="props">
+            <q-tr
+              :props="props"
+              :class="{
+                'just-added': props.row._id === episode.justAddedSubtitleId,
+              }"
+            >
+              <q-td auto-width>
                 <q-btn
-                  flat
-                  v-if="!props.row.user.isAdmin"
-                  :href="`/users/${props.row.user._id}`"
-                >
-                  {{ props.row.user.username }}
-                </q-btn>
-                <q-chip
-                  :icon="props.row.user.isAdmin ? 'verified' : 'grade'"
-                  size="0.7rem"
-                  >{{
-                    props.row.user.isAdmin
-                      ? 'Official'
-                      : props.row.user.reputation
-                  }}
-                  <q-tooltip>{{
-                    props.row.user.isAdmin ? 'Uploaded by Staff' : 'Reputation'
-                  }}</q-tooltip>
-                </q-chip>
-              </span>
-              <span v-if="col.name === 'download'">
-                <q-btn
-                  v-if="props.row.filePath"
-                  :href="ApiEndpoints.downloadSubtitle(props.row._id)"
-                  icon="download"
+                  size="sm"
                   color="primary"
-                  flat
                   round
+                  dense
+                  @click="
+                    columnExpanded[props.rowIndex] =
+                      !columnExpanded[props.rowIndex]
+                  "
+                  :icon="columnExpanded[props.rowIndex] ? 'remove' : 'add'"
                 >
-                  <q-tooltip>Click to Download</q-tooltip>
+                  <q-tooltip>See release</q-tooltip>
                 </q-btn>
-                <q-icon
-                  class="q-pa-xs"
-                  v-if="!props.row.filePath"
-                  name="file_download_off"
-                  size="1.5rem"
-                  color="red"
+              </q-td>
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                <span
+                  v-if="
+                    col.name !== 'actions' &&
+                    col.name !== 'download' &&
+                    col.name !== 'uploadedBy'
+                  "
                 >
-                  <q-tooltip>Not Yet Available</q-tooltip>
-                </q-icon>
-              </span>
-              <span v-if="col.name === 'actions'">
-                <q-btn icon="more_horiz" flat round>
-                  <q-menu>
-                    <q-list>
-                      <q-item
-                        v-if="
-                          !props.row.isConfirmed &&
-                          !props.row.isWorkInProgress &&
-                          !auth.isAdmin()
-                        "
-                        clickable
-                        @click="() => reportClick(props.row)"
-                        v-close-popup
-                      >
-                        <q-item-section>Report</q-item-section>
-                      </q-item>
-                      <q-item
-                        v-if="
-                          !props.row.isConfirmed &&
-                          !props.row.isWorkInProgress &&
-                          auth.isAdmin()
-                        "
-                        clickable
-                        @click="() => confirmClick(props.row)"
-                        v-close-popup
-                      >
-                        <q-item-section>Confirm</q-item-section>
-                      </q-item>
-                      <q-item
-                        v-if="!props.row.isThankedByUser && !props.row.isOwner"
-                        clickable
-                        @click="() => thankYouClick(props.row)"
-                        v-close-popup
-                      >
-                        <q-item-section>Thank You</q-item-section>
-                      </q-item>
-                      <q-item
-                        v-if="
-                          !props.row.isConfirmed &&
-                          (props.row.isOwner || auth.isAdmin())
-                        "
-                        clickable
-                        @click="editClick(props.row)"
-                        v-close-popup
-                      >
-                        <q-item-section>Edit</q-item-section>
-                      </q-item>
-                      <q-item
-                        v-if="props.row.isOwner || auth.isAdmin()"
-                        clickable
-                        @click="deleteSubtitleClick(props.row._id)"
-                        v-close-popup
-                      >
-                        <q-item-section>Delete</q-item-section>
-                      </q-item>
-                      <q-separator />
-                    </q-list>
-                  </q-menu> </q-btn
-              ></span>
-            </q-td>
-          </q-tr>
-          <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
-            <q-td colspan="100%">
-              <div class="text-left">{{ props.row.release }}</div>
-            </q-td>
-          </q-tr>
-        </template>
-      </q-table>
+                  {{ col.value }}
+                </span>
+                <span v-if="col.name === 'uploadedBy'">
+                  <q-btn
+                    flat
+                    v-if="!props.row.user.isAdmin"
+                    :href="`/users/${props.row.user._id}`"
+                  >
+                    {{ props.row.user.username }}
+                  </q-btn>
+                  <q-chip
+                    text-color="white"
+                    :icon="props.row.user.isAdmin ? 'verified' : 'grade'"
+                    size="0.7rem"
+                    :color="
+                      getReputationBadgeColor(
+                        props.row.user.reputation,
+                        props.row.user.isAdmin
+                      )
+                    "
+                    >{{
+                      props.row.user.isAdmin
+                        ? 'Official'
+                        : props.row.user.reputation
+                    }}
+                    <q-tooltip>{{
+                      props.row.user.isAdmin
+                        ? 'Uploaded by Staff'
+                        : 'Reputation'
+                    }}</q-tooltip>
+                  </q-chip>
+                </span>
+                <span v-if="col.name === 'download'">
+                  <q-btn
+                    v-if="props.row.filePath"
+                    :href="ApiEndpoints.downloadSubtitle(props.row._id)"
+                    icon="download"
+                    color="primary"
+                    flat
+                    round
+                  >
+                    <q-tooltip>Click to Download</q-tooltip>
+                  </q-btn>
+                  <q-icon
+                    class="q-pa-xs"
+                    v-if="!props.row.filePath"
+                    name="file_download_off"
+                    size="1.5rem"
+                    color="red"
+                  >
+                    <q-tooltip>Not Yet Available</q-tooltip>
+                  </q-icon>
+                </span>
+                <span v-if="col.name === 'actions'">
+                  <q-btn icon="more_horiz" flat round>
+                    <q-menu>
+                      <q-list>
+                        <q-item
+                          v-if="!props.row.isConfirmed && !auth.isAdmin()"
+                          clickable
+                          @click="reportClick(props.row)"
+                          v-close-popup
+                        >
+                          <q-item-section>Report</q-item-section>
+                        </q-item>
+                        <q-item
+                          v-if="
+                            !props.row.isConfirmed &&
+                            !props.row.isWorkInProgress &&
+                            auth.isAdmin()
+                          "
+                          clickable
+                          @click="() => confirmClick(props.row)"
+                          v-close-popup
+                        >
+                          <q-item-section>Confirm</q-item-section>
+                        </q-item>
+                        <q-item
+                          v-if="
+                            !props.row.isThankedByUser && !props.row.isOwner
+                          "
+                          clickable
+                          @click="() => thankYouClick(props.row)"
+                          v-close-popup
+                        >
+                          <q-item-section>Thank You</q-item-section>
+                        </q-item>
+                        <q-item
+                          v-if="
+                            !props.row.isConfirmed &&
+                            (props.row.isOwner || auth.isAdmin())
+                          "
+                          clickable
+                          @click="editClick(props.row)"
+                          v-close-popup
+                        >
+                          <q-item-section>Edit</q-item-section>
+                        </q-item>
+                        <q-item
+                          v-if="props.row.isOwner || auth.isAdmin()"
+                          clickable
+                          @click="deleteSubtitleClick(props.row._id)"
+                          v-close-popup
+                        >
+                          <q-item-section>Delete</q-item-section>
+                        </q-item>
+                        <q-separator />
+                      </q-list>
+                    </q-menu> </q-btn
+                ></span>
+              </q-td>
+            </q-tr>
+            <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
+              <q-td colspan="100%">
+                <div class="text-left">{{ props.row.release }}</div>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-scroll-area>
     </q-card-section>
   </q-card>
 </template>
@@ -225,25 +243,21 @@ import {
   Ref,
   toRefs,
 } from 'vue'
-import { ISubtitleRequest } from '../interfaces/subtitleRequest'
 import { api, ApiEndpoints } from '../boot/axios'
-import {
-  ITVShowDetails,
-  ITVShowEpisode,
-  ITVShowEpisodeForDialog,
-} from '../interfaces/tv-show'
+import { ITVShowEpisodeForDialog } from '../interfaces/tv-show'
 import { languages } from 'countries-list'
 import moment from 'moment'
 import { useAuthStore } from '../stores/auth-store'
 import truncate from 'truncate'
+import { getReputationBadgeColor } from '../utils/getReputationBadgeColor'
 import { useQuasar } from 'quasar'
 import SubtitleForm from '../components/SubtitleForm.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ReportSubtitleForm from '../components/ReportSubtitleForm.vue'
 import { ISubtitle } from '../interfaces/subtitle'
 
 export default defineComponent({
-  components: { SubtitleForm, ConfirmDialog },
-
+  components: { SubtitleForm, ReportSubtitleForm, ConfirmDialog },
   props: {
     episode: {
       type: Object as PropType<ITVShowEpisodeForDialog>,
@@ -261,6 +275,8 @@ export default defineComponent({
     const showConfirmDialog: Ref<boolean> = ref(false)
     const isSubtitleFormShowed: Ref<boolean> = ref(false)
     const subtitleForDialog: Ref<ISubtitle | undefined> = ref(undefined)
+    const subtitleIdToReport: Ref<string> = ref('undefined')
+    const isReportDialogShown: Ref<boolean> = ref(false)
     let subtitleIdToDelete: string | null = null
     const columnExpanded = reactive<{
       [key: number]: boolean
@@ -364,7 +380,7 @@ export default defineComponent({
         },
       },
       {
-        name: 'updated',
+        name: 'updatedFromNow',
         required: true,
         label: 'Updated',
         field: (row: ISubtitle) => row.updatedAt,
@@ -454,7 +470,8 @@ export default defineComponent({
     }
 
     const reportClick = async (subtitleRow: ISubtitle) => {
-      console.log('report click')
+      subtitleIdToReport.value = subtitleRow._id
+      isReportDialogShown.value = true
     }
 
     const addClick = () => {
@@ -483,7 +500,12 @@ export default defineComponent({
         })
         await loadSubtitles()
       } catch (err: any) {
-        error.value = err.response?.data.message || 'Error occurred'
+        $q.notify({
+          message: err.response?.data.message || 'Error occurred',
+          position: 'bottom',
+          color: 'red',
+          timeout: 3000,
+        })
       } finally {
         isLoading.value = false
       }
@@ -493,6 +515,10 @@ export default defineComponent({
       isSubtitleFormShowed.value = false
       episode.value.justAddedSubtitleId = justSaved._id
       await loadSubtitles()
+    }
+
+    const onReportSaved = () => {
+      isReportDialogShown.value = false
     }
 
     const getLanguageKey = (key: string): keyof typeof languages =>
@@ -517,6 +543,10 @@ export default defineComponent({
       isSubtitleFormShowed,
       subtitleForDialog,
       addClick,
+      isReportDialogShown,
+      onReportSaved,
+      subtitleIdToReport,
+      getReputationBadgeColor,
     }
   },
 })

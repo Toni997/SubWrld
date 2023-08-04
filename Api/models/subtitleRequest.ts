@@ -1,5 +1,5 @@
 import mongoose, { Schema, model, mongo } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/mongoose'
+import { IID, ITimestamps } from '../interfaces/common'
 
 export interface ICreateSubtitleRequest {
   userId: mongoose.Types.ObjectId
@@ -17,7 +17,6 @@ export interface ISubtitleRequest
   extends IID,
     ITimestamps,
     ICreateSubtitleRequest {
-  isFulfilled: boolean
   subtitleId: mongoose.Types.ObjectId | null
 }
 
@@ -58,11 +57,6 @@ const subtitleRequestSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'Subtitle',
       default: null,
-    },
-    isFulfilled: {
-      type: Boolean,
-      required: true,
-      default: false,
     },
     preferForHearingImpaired: {
       type: Boolean,

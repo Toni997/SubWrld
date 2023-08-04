@@ -21,7 +21,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const watchedEpisodesValidator_1 = require("../middleware/validators/watchedEpisodesValidator");
-const watchedEpisodes_1 = __importDefault(require("../models/watchedEpisodes"));
+const watchedEpisode_1 = __importDefault(require("../models/watchedEpisode"));
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
 // @desc Auth user & get token
 // @route POST /users/login
@@ -193,7 +193,7 @@ exports.removeFromWatchlist = removeFromWatchlist;
 // @access Private
 const checkEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _f;
-    const watchedEpisode = yield watchedEpisodes_1.default.findOne({
+    const watchedEpisode = yield watchedEpisode_1.default.findOne({
         userId: (_f = req.user) === null || _f === void 0 ? void 0 : _f._id,
         episodeId: req.params.episodeId,
     });
@@ -269,7 +269,7 @@ const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __
     const markWatched = req.body;
     const watchedEpisodesToInsert = [];
     yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(markWatched.tvShowId));
-    const alreadyWatchedEpisodes = yield watchedEpisodes_1.default.find({
+    const alreadyWatchedEpisodes = yield watchedEpisode_1.default.find({
         userId,
         tvShowId: markWatched.tvShowId,
     });
@@ -278,7 +278,7 @@ const markEpisodeWatched = (0, express_async_handler_1.default)((req, res) => __
         yield handleMarkWatched(userId, markWatched.tvShowId, watched, alreadyWatchedEpisodesInASeason, watchedEpisodesToInsert);
     }
     if (watchedEpisodesToInsert.length) {
-        yield watchedEpisodes_1.default.insertMany(watchedEpisodesToInsert);
+        yield watchedEpisode_1.default.insertMany(watchedEpisodesToInsert);
         res
             .status(201)
             .json(`Added ${watchedEpisodesToInsert.length} watched episodes`);
@@ -295,7 +295,7 @@ const removeEpisodeFromWatched = (0, express_async_handler_1.default)((req, res)
     var _h;
     const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h._id;
     const episodeId = Number(req.params.episodeId);
-    const watchedEpisode = yield watchedEpisodes_1.default.findOne({
+    const watchedEpisode = yield watchedEpisode_1.default.findOne({
         userId,
         episodeId,
     });

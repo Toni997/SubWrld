@@ -22,6 +22,7 @@
           to="/watchlist"
           label="Watchlist"
         />
+        <q-route-tab v-if="auth.isAdmin()" to="/reports" label="Reports" />
       </q-tabs>
     </q-header>
 

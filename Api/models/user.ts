@@ -1,6 +1,6 @@
 import mongoose, { Schema, model, Types, Model } from 'mongoose'
 import bcrypt, { decodeBase64 } from 'bcryptjs'
-import { IID, ITimestamps } from '../interfaces/mongoose'
+import { IID, ITimestamps } from '../interfaces/common'
 
 export interface IUpdateUser extends IID {
   username: string
@@ -14,6 +14,7 @@ export interface IUser extends IID, ITimestamps, IUserMethods {
   password: string
   isAdmin: boolean
   darkMode: boolean
+  reputation: number
 }
 
 export interface IUserWithRefs extends IUser {

@@ -3,7 +3,7 @@ import users from './seed/users'
 import User from './models/user'
 import Watchlist from './models/watchlist'
 import connectDB from './config/mongo'
-import WatchedEpisode from './models/watchedEpisodes'
+import WatchedEpisode from './models/watchedEpisode'
 
 dotenv.config()
 

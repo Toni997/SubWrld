@@ -30,15 +30,16 @@ export interface ISubtitleRequest extends IID {
   preferredLanguage: string
   preferredFrameRate: number | null
   preferForHearingImpaired: boolean
-  isFulfilled: boolean
   comment: string | null
   createdAt: string
   updatedAt: string
   user: IUserRef
   subtitleId: string | null
-  subtitle: ISubtitleForRequest
+  subtitle: ISubtitleForRequest | null
 }
 
 export interface ISubtitleForRequest extends IID {
-  _id: string
+  isConfirmed: boolean
+  uploaderIsAuthor: boolean
+  user: IUserRef
 }

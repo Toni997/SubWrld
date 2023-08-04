@@ -28,12 +28,20 @@ export class ApiEndpoints {
     `/subtitles/requests/${episodeId}`
   static deleteSubtitleRequest = (episodeId: string | number) =>
     `/subtitles/requests/${episodeId}`
+  static reopenSubtitleRequest = (requestId: string | number) =>
+    `/subtitles/requests/reopen/${requestId}`
+  static fulfillSubtitleRequestWithExistingSubtitle = (
+    requestId: string | number,
+    subtitleId: string | number
+  ) => `/subtitles/requests/${requestId}/fulfill/${subtitleId}`
   static setDarkMode = '/users/set-dark-mode'
   static addSubtitle = '/subtitles'
   static editSubtitle = (subtitleId: string | number) =>
     `/subtitles/${subtitleId}`
   static getSubtitles = (episodeId: string | number) =>
     `/subtitles/${episodeId}`
+  static getUserSubtitlesForEpisode = (episodeId: string | number) =>
+    `/subtitles/my/${episodeId}`
   static deleteSubtitle = (episodeId: string | number) =>
     `/subtitles/${episodeId}`
   static downloadSubtitle = (subtitleId: string | number) =>
@@ -44,6 +52,27 @@ export class ApiEndpoints {
     `/subtitles/confirm/${subtitleId}`
   static reportSubtitle = (subtitleId: string | number) =>
     `/subtitles/report/${subtitleId}`
+  static approveReport = (reportId: string | number) =>
+    `/subtitles/report/approve/${reportId}`
+  static rejectReport = (reportId: string | number) =>
+    `/subtitles/report/reject/${reportId}`
+  static getAnnouncemensForTVShow = (
+    tvShowId: string | number,
+    pageNumber: string | number
+  ) => `/announcements/tv-show/${tvShowId}?page=${pageNumber}`
+  static getAllAnnouncements = (pageNumber: string | number) =>
+    `/announcements?page=${pageNumber}`
+  static getAllWatchlistedAnnouncements = (pageNumber: string | number) =>
+    `/announcements/watchlisted-only/page=${pageNumber}`
+  static addAnnouncement = '/announcements'
+  static updateAnnouncement = (announcementId: string | number) =>
+    `/announcements/${announcementId}`
+  static deleteAnnouncement = (announcementId: string | number) =>
+    `/announcements/${announcementId}`
+  static getSubtitleReportsWithStatus = (
+    status: string | number,
+    pageNumber: string | number
+  ) => `/subtitles/reports/${status}?page=${pageNumber}`
 }
 
 declare module '@vue/runtime-core' {
