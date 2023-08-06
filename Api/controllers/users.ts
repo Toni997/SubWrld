@@ -2,8 +2,8 @@ import asyncHandler from 'express-async-handler'
 import generateToken from '../utils/generateToken'
 import { Request, Response } from 'express'
 import { IAuthUserRequest, IUpdateUserRequest } from '../interfaces/request'
-import User, { IUser } from '../models/user'
-import Watchlist, { IWatchlistWithTVShowDetails } from '../models/watchlist'
+import { IUser } from '../interfaces/user'
+import { IWatchlistWithTVShowDetails } from '../interfaces/watchlist'
 import mongoose from 'mongoose'
 import axios from 'axios'
 import {
@@ -20,11 +20,16 @@ import {
 } from '../interfaces/tv-shows'
 
 import { markWatchedEpisodesValidator } from '../middleware/validators/watchedEpisodesValidator'
-import WatchedEpisode, {
+import {
   IUpdateWatchedEpisode,
   IWatchedEpisode,
-} from '../models/watchedEpisode'
+} from '../interfaces/watchedEpisode'
 import { CustomError } from '../middleware/errorMiddleware'
+import User from '../models/user'
+import WatchedEpisode from '../models/watchedEpisode'
+import Watchlist from '../models/watchlist'
+
+const pageSize = 10
 
 // @desc Auth user & get token
 // @route POST /users/login
@@ -117,12 +122,31 @@ const getUser = asyncHandler(async (req: Request, res: Response) => {
     '-password -watchlist'
   )
 
-  if (user) {
-    res.json(user)
-  } else {
-    throw new CustomError('User not found', 404)
-  }
+  if (!user) throw new CustomError('User not found', 404)
+
+  res.json(user)
 })
+
+// @desc Get users ordered by reputation
+// @route GET /users/by-reputation
+// @access Public
+const getUsersOrderedByReputation = asyncHandler(
+  async (req: Request, res: Response) => {
+    const pageNumber = Number(req.query.page) || 1
+
+    const options = {
+      page: pageNumber,
+      limit: pageSize,
+      select: '_id username email reputation createdAt',
+      sort: { reputation: -1 },
+      lean: true,
+    }
+
+    const result = await User.paginate({ isAdmin: false }, options)
+
+    res.json(result)
+  }
+)
 
 // @desc Get user watchlist
 // @route GET /users/watchlist
@@ -404,4 +428,5 @@ export {
   removeEpisodeFromWatched,
   markEpisodeWatched,
   setDarkMode,
+  getUsersOrderedByReputation,
 }

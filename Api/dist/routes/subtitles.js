@@ -12,6 +12,7 @@ const onlyMultipartDataAllowed_1 = __importDefault(require("../middleware/onlyMu
 const subtitleRequestValidator_1 = require("../middleware/validators/subtitleRequestValidator");
 const subtitleReportValidator_1 = require("../middleware/validators/subtitleReportValidator");
 const subtitleRouter = express_1.default.Router();
+subtitleRouter.get('', authMiddleware_1.authenticate, subtitles_1.getAllSubtitles);
 subtitleRouter.post('', authMiddleware_1.authenticate, onlyMultipartDataAllowed_1.default, multer_1.createSubtitleMulter.array('files', 5), subtitles_1.addSubtitle);
 subtitleRouter.put('/:subtitleId', authMiddleware_1.authenticate, onlyMultipartDataAllowed_1.default, multer_1.updateSubtitleMulter.array('files', 5), subtitles_1.updateSubtitle);
 subtitleRouter.get('/download/:subtitleId', subtitles_1.downloadSubtitle);
@@ -23,6 +24,7 @@ subtitleRouter.patch('/report/approve/:reportId', authMiddleware_1.requireAdminR
 subtitleRouter.patch('/report/reject/:reportId', authMiddleware_1.requireAdminRights, subtitles_1.rejectSubtitleReport);
 subtitleRouter.post('/report/:subtitleId', authMiddleware_1.authenticate, (0, bodyMiddleware_1.validateBody)(subtitleReportValidator_1.subtitleReportValidator), subtitles_1.reportSubtitle);
 subtitleRouter.patch('/confirm/:subtitleId', authMiddleware_1.requireAdminRights, subtitles_1.confirmSubtitle);
+subtitleRouter.get('/by/:userId', subtitles_1.getSubtitlesByUser);
 subtitleRouter.get('/my/:episodeId', authMiddleware_1.authenticate, subtitles_1.getUserSubtitlesForEpisode);
 subtitleRouter.get('/:episodeId', authMiddleware_1.passUserToRequest, subtitles_1.getSubtitlesForEpisode);
 subtitleRouter.delete('/:subtitleId', authMiddleware_1.authenticate, subtitles_1.deleteSubtitle);

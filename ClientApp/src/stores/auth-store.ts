@@ -28,7 +28,6 @@ export const useAuthStore = defineStore({
       }
     },
     loadUserInfo(userInfo: any, isFromLogin = false): void {
-      console.log('USER', userInfo)
       this.userInfo = {
         _id: userInfo._id,
         username: userInfo.username,

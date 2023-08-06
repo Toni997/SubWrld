@@ -12,17 +12,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setDarkMode = exports.markEpisodeWatched = exports.removeEpisodeFromWatched = exports.checkEpisodeWatched = exports.removeFromWatchlist = exports.addToWatchlist = exports.checkWatchlisted = exports.getWatchlist = exports.updateUser = exports.getUser = exports.signupUser = exports.loginUser = void 0;
+exports.getUsersOrderedByReputation = exports.setDarkMode = exports.markEpisodeWatched = exports.removeEpisodeFromWatched = exports.checkEpisodeWatched = exports.removeFromWatchlist = exports.addToWatchlist = exports.checkWatchlisted = exports.getWatchlist = exports.updateUser = exports.getUser = exports.signupUser = exports.loginUser = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const generateToken_1 = __importDefault(require("../utils/generateToken"));
-const user_1 = __importDefault(require("../models/user"));
-const watchlist_1 = __importDefault(require("../models/watchlist"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const watchedEpisodesValidator_1 = require("../middleware/validators/watchedEpisodesValidator");
-const watchedEpisode_1 = __importDefault(require("../models/watchedEpisode"));
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
+const user_1 = __importDefault(require("../models/user"));
+const watchedEpisode_1 = __importDefault(require("../models/watchedEpisode"));
+const watchlist_1 = __importDefault(require("../models/watchlist"));
+const pageSize = 10;
 // @desc Auth user & get token
 // @route POST /users/login
 // @access Public
@@ -104,14 +105,27 @@ exports.updateUser = updateUser;
 // @access Public
 const getUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield user_1.default.findById(req.params.userId).select('-password -watchlist');
-    if (user) {
-        res.json(user);
-    }
-    else {
+    if (!user)
         throw new errorMiddleware_1.CustomError('User not found', 404);
-    }
+    res.json(user);
 }));
 exports.getUser = getUser;
+// @desc Get users ordered by reputation
+// @route GET /users/by-reputation
+// @access Public
+const getUsersOrderedByReputation = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const pageNumber = Number(req.query.page) || 1;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        select: '_id username email reputation createdAt',
+        sort: { reputation: -1 },
+        lean: true,
+    };
+    const result = yield user_1.default.paginate({ isAdmin: false }, options);
+    res.json(result);
+}));
+exports.getUsersOrderedByReputation = getUsersOrderedByReputation;
 // @desc Get user watchlist
 // @route GET /users/watchlist
 // @access Private

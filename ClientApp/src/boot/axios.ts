@@ -63,7 +63,7 @@ export class ApiEndpoints {
   static getAllAnnouncements = (pageNumber: string | number) =>
     `/announcements?page=${pageNumber}`
   static getAllWatchlistedAnnouncements = (pageNumber: string | number) =>
-    `/announcements/watchlisted-only/page=${pageNumber}`
+    `/announcements/watchlisted-only?page=${pageNumber}`
   static addAnnouncement = '/announcements'
   static updateAnnouncement = (announcementId: string | number) =>
     `/announcements/${announcementId}`
@@ -73,6 +73,14 @@ export class ApiEndpoints {
     status: string | number,
     pageNumber: string | number
   ) => `/subtitles/reports/${status}?page=${pageNumber}`
+  static getUserDetails = (userId: string | number) => `/users/${userId}`
+  static getUserSubtitles = (userId: string | number, page: string | number) =>
+    `/subtitles/by/${userId}?page=${page}`
+  static getAllUsersOrderedByReputation = (page: string | number) =>
+    `/users/by-reputation?page=${page}`
+  static getAllSubtitles = (page: string | number) => `/subtitles?page=${page}`
+  static getNotificationsForUser = (page: string | number) =>
+    `/notifications?page=${page}`
 }
 
 declare module '@vue/runtime-core' {

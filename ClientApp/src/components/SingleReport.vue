@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="text-body1">
     <q-dialog v-model="isConfirmDialogShown">
       <confirm-dialog
         message="Are you sure you want to handle this report?"
@@ -13,8 +13,10 @@
       <span>
         <q-btn
           flat
+          dense
+          no-caps
           v-if="!report.userId.isAdmin"
-          :href="`/users/${report.userId._id}`"
+          :to="`/users/${report.userId._id}`"
         >
           {{ report.userId.username }}
         </q-btn>
@@ -38,70 +40,102 @@
     <div>Reason: {{ report.reason }}</div>
     <div>Created: {{ moment(report.createdAt).fromNow() }}</div>
     <div>Updated: {{ moment(report.updatedAt).fromNow() }}</div>
-    <h5 class="q-my-xs">Subtitle info</h5>
-    <div>TV Show: {{ report.subtitleId.tvShowTitle }}</div>
-    <div>
-      Episode: S{{ report.subtitleId.season }}E{{ report.subtitleId.episode }}
+    <div v-if="report.subtitleId">
+      <h5 class="q-my-xs">Subtitle info</h5>
+      <div>TV Show: {{ report.subtitleId.tvShowTitle }}</div>
+      <div>
+        Episode: S{{ report.subtitleId.season }}E{{ report.subtitleId.episode }}
+      </div>
+      <div>
+        Uploader:
+        <span>
+          <q-btn flat dense :to="`/users/${report.subtitleId.userId._id}`">
+            {{ report.subtitleId.userId.username }}
+          </q-btn>
+          <q-chip
+            text-color="white"
+            :icon="report.subtitleId.userId.isAdmin ? 'verified' : 'grade'"
+            size="0.7rem"
+            :color="
+              getReputationBadgeColor(
+                report.subtitleId.userId.reputation,
+                report.subtitleId.userId.isAdmin
+              )
+            "
+            >{{
+              report.subtitleId.userId.isAdmin
+                ? 'Official'
+                : report.subtitleId.userId.reputation
+            }}
+            <q-tooltip>{{
+              report.subtitleId.userId.isAdmin
+                ? 'Uploaded by Staff'
+                : 'Reputation'
+            }}</q-tooltip>
+          </q-chip>
+        </span>
+      </div>
+      <div>Release: {{ report.subtitleId.release }}</div>
+      <div>Frame Rate: {{ report.subtitleId.frameRate }}</div>
+      <div>
+        For Hearing Impaired:
+        <q-icon
+          :name="report.subtitleId.forHearingImpaired ? 'check' : 'close'"
+          :color="report.subtitleId.forHearingImpaired ? 'green' : 'red'"
+          size="1.2rem"
+        ></q-icon>
+      </div>
+      <div>
+        Only Foreign Language:
+        <q-icon
+          :name="report.subtitleId.onlyForeignLanguage ? 'check' : 'close'"
+          :color="report.subtitleId.onlyForeignLanguage ? 'green' : 'red'"
+          size="1.2rem"
+        ></q-icon>
+      </div>
+      <div>
+        Work in Progress:
+        <q-icon
+          :name="report.subtitleId.isWorkInProgress ? 'check' : 'close'"
+          :color="report.subtitleId.isWorkInProgress ? 'green' : 'red'"
+          size="1.2rem"
+        ></q-icon>
+      </div>
+      <div>
+        Uploader is Author:
+        <q-icon
+          :name="report.subtitleId.uploaderIsAuthor ? 'check' : 'close'"
+          :color="report.subtitleId.uploaderIsAuthor ? 'green' : 'red'"
+          size="1.2rem"
+        ></q-icon>
+      </div>
+      <div>
+        Confirmed:
+        <q-icon
+          :name="report.subtitleId.isConfirmed ? 'check' : 'close'"
+          :color="report.subtitleId.isConfirmed ? 'green' : 'red'"
+          size="1.2rem"
+        ></q-icon>
+      </div>
+      <div>Created: {{ moment(report.subtitleId.createdAt).fromNow() }}</div>
+      <div>Updated: {{ moment(report.subtitleId.updatedAt).fromNow() }}</div>
+      <div v-if="report.subtitleId.filePath">
+        <div>Downloads: {{ report.subtitleId.downloads }}</div>
+        <div>
+          Download:
+          <q-btn
+            v-if="report.subtitleId.filePath"
+            :href="ApiEndpoints.downloadSubtitle(report.subtitleId._id)"
+            icon="download"
+            color="primary"
+            flat
+            round
+          >
+            <q-tooltip>Click to Download</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
     </div>
-    <div>Release: {{ report.subtitleId.release }}</div>
-    <div>Frame Rate: {{ report.subtitleId.frameRate }}</div>
-    <div>
-      For Hearing Impaired:
-      <q-icon
-        :name="report.subtitleId.forHearingImpaired ? 'check' : 'close'"
-        :color="report.subtitleId.forHearingImpaired ? 'green' : 'red'"
-        size="1.2rem"
-      ></q-icon>
-    </div>
-    <div>
-      Only Foreign Language:
-      <q-icon
-        :name="report.subtitleId.onlyForeignLanguage ? 'check' : 'close'"
-        :color="report.subtitleId.onlyForeignLanguage ? 'green' : 'red'"
-        size="1.2rem"
-      ></q-icon>
-    </div>
-    <div>
-      Work in Progress:
-      <q-icon
-        :name="report.subtitleId.isWorkInProgress ? 'check' : 'close'"
-        :color="report.subtitleId.isWorkInProgress ? 'green' : 'red'"
-        size="1.2rem"
-      ></q-icon>
-    </div>
-    <div>
-      Uploader is Author:
-      <q-icon
-        :name="report.subtitleId.uploaderIsAuthor ? 'check' : 'close'"
-        :color="report.subtitleId.uploaderIsAuthor ? 'green' : 'red'"
-        size="1.2rem"
-      ></q-icon>
-    </div>
-    <div>
-      Confirmed:
-      <q-icon
-        :name="report.subtitleId.isConfirmed ? 'check' : 'close'"
-        :color="report.subtitleId.isConfirmed ? 'green' : 'red'"
-        size="1.2rem"
-      ></q-icon>
-    </div>
-    <div>Created: {{ moment(report.subtitleId.createdAt).fromNow() }}</div>
-    <div>Updated: {{ moment(report.subtitleId.updatedAt).fromNow() }}</div>
-    <div>Downloads: {{ report.subtitleId.downloads }}</div>
-    <div>
-      Download:
-      <q-btn
-        v-if="report.subtitleId.filePath"
-        :href="ApiEndpoints.downloadSubtitle(report.subtitleId._id)"
-        icon="download"
-        color="primary"
-        flat
-        round
-      >
-        <q-tooltip>Click to Download</q-tooltip>
-      </q-btn>
-    </div>
-
     <div class="q-mt-md" v-if="report.status === ReportStatus.Pending">
       <q-btn
         class="q-mr-xs"

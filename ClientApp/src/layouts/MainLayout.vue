@@ -2,11 +2,18 @@
   <q-layout view="lHr LpR lFr">
     <q-header elevated class="bg-primary text-white" height-hint="98">
       <q-toolbar>
-        <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
+        <q-btn
+          v-if="auth.isLoggedIn()"
+          dense
+          flat
+          round
+          icon="menu"
+          @click="toggleLeftDrawer"
+        />
 
         <q-toolbar-title>
           <q-avatar>
-            <img src="https://cdn.quasar.dev/logo-v2/svg/logo-mono-white.svg" />
+            <img src="../assets/logo.png" />
           </q-avatar>
           SubWrld
         </q-toolbar-title>
@@ -26,8 +33,14 @@
       </q-tabs>
     </q-header>
 
-    <q-drawer show-if-above v-model="leftDrawerOpen" side="left" bordered>
-      <!-- drawer content -->
+    <q-drawer
+      v-if="auth.isLoggedIn()"
+      show-if-above
+      v-model="leftDrawerOpen"
+      side="left"
+      bordered
+    >
+      <notifications-and-announcements />
     </q-drawer>
 
     <q-drawer show-if-above v-model="rightDrawerOpen" side="right" bordered>
@@ -38,20 +51,12 @@
             <q-toggle size="lg" v-model="darkMode" ch label="Dark Mode" />
           </q-item-section>
         </q-item>
-        <q-item
-          v-if="!auth.isLoggedIn()"
-          clickable
-          @click="$router.push('/login')"
-        >
+        <q-item v-if="!auth.isLoggedIn()" clickable to="/login">
           <q-item-section clickable>
             <q-item-label>Log In</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item
-          v-if="!auth.isLoggedIn()"
-          clickable
-          @click="$router.push('/signup')"
-        >
+        <q-item v-if="!auth.isLoggedIn()" clickable to="/signup">
           <q-item-section>
             <q-item-label>Sign Up</q-item-label>
           </q-item-section>
@@ -77,15 +82,17 @@ import { useAuthStore } from '../stores/auth-store'
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
+import NotificationsAndAnnouncements from '../components/NotificationsAndAnnouncements.vue'
 
 export default {
-  components: { HelloMessage },
+  components: { HelloMessage, NotificationsAndAnnouncements },
   setup() {
     const auth = useAuthStore()
     const { darkMode } = storeToRefs(auth)
     const $q = useQuasar()
     const leftDrawerOpen: Ref<boolean> = ref(false)
     const rightDrawerOpen: Ref<boolean> = ref(false)
+
     polyfillCountryFlagEmojis()
 
     const logoutClick = async () => auth.logout()

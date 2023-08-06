@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const mongoose_paginate_v2_1 = __importDefault(require("mongoose-paginate-v2"));
 const userSchema = new mongoose_1.Schema({
     username: {
         type: String,
@@ -78,5 +79,6 @@ userSchema.pre('save', function (next) {
         this.password = yield bcryptjs_1.default.hash(this.password, salt);
     });
 });
+userSchema.plugin(mongoose_paginate_v2_1.default);
 const User = (0, mongoose_1.model)('User', userSchema);
 exports.default = User;

@@ -1,21 +1,7 @@
 import { Schema, model, PaginateModel } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/common'
 import paginate from 'mongoose-paginate-v2'
 import aggregatePaginate from 'mongoose-aggregate-paginate-v2'
-
-export interface IAnnouncementForm {
-  text: string
-}
-
-export interface ICreateAnnouncement extends IAnnouncementForm {
-  tvShowId: number
-}
-
-export interface IAnnouncement extends IID, ITimestamps, ICreateAnnouncement {}
-
-export interface IAnnouncementWithTVShowTitle extends IAnnouncement {
-  tvShowTitle: string
-}
+import { IAnnouncement } from '../interfaces/announcement'
 
 const announcementSchema = new Schema(
   {

@@ -51,7 +51,7 @@ export interface ISubtitle extends IID, ITimestamps {
   isConfirmed: boolean
 }
 
-export interface ISubtitleRef extends IID, ITimestamps {
+export interface ISubtitleWithTVShowTitle extends IID, ITimestamps {
   userId: IUserRefWithReputation
   tvShowId: number
   season: number

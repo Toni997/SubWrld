@@ -12,14 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRejectedSubtitleReports = exports.getApprovedSubtitleReports = exports.getPendingSubtitleReports = exports.approveSubtitleReport = exports.rejectSubtitleReport = exports.getUserSubtitlesForEpisode = exports.fulfillRequestWithExistingSubtitle = exports.reportSubtitle = exports.reopenSubtitleRequest = exports.updateSubtitle = exports.confirmSubtitle = exports.thankSubtitleUploader = exports.deleteSubtitle = exports.getSubtitlesForEpisode = exports.downloadSubtitle = exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
+exports.getAllSubtitles = exports.getSubtitlesByUser = exports.getRejectedSubtitleReports = exports.getApprovedSubtitleReports = exports.getPendingSubtitleReports = exports.approveSubtitleReport = exports.rejectSubtitleReport = exports.getUserSubtitlesForEpisode = exports.fulfillRequestWithExistingSubtitle = exports.reportSubtitle = exports.reopenSubtitleRequest = exports.updateSubtitle = exports.confirmSubtitle = exports.thankSubtitleUploader = exports.deleteSubtitle = exports.getSubtitlesForEpisode = exports.downloadSubtitle = exports.addSubtitle = exports.deleteSubtitleRequest = exports.getSubtitleRequestsForEpisode = exports.addSubtitleRequest = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-const subtitleRequest_1 = __importDefault(require("../models/subtitleRequest"));
-const user_1 = __importDefault(require("../models/user"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const mongoose_1 = __importDefault(require("mongoose"));
-const subtitle_1 = __importDefault(require("../models/subtitle"));
 const uuid_1 = require("uuid");
 const archiver_1 = __importDefault(require("archiver"));
 const fs_1 = __importDefault(require("fs"));
@@ -28,8 +25,11 @@ const multer_1 = require("../config/multer");
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
 const mmmagic_1 = require("mmmagic");
 const convertStringifiedBoolean_1 = require("../utils/convertStringifiedBoolean");
-const subtitleReport_1 = __importDefault(require("../models/subtitleReport"));
 const reportStatus_1 = require("../utils/reportStatus");
+const subtitleReport_1 = __importDefault(require("../models/subtitleReport"));
+const subtitleRequest_1 = __importDefault(require("../models/subtitleRequest"));
+const user_1 = __importDefault(require("../models/user"));
+const subtitle_1 = __importDefault(require("../models/subtitle"));
 const pageSize = 10;
 const ensureAllowedMimeTypeForFiles = (files) => {
     const magic = new mmmagic_1.Magic(mmmagic_1.MAGIC_MIME_TYPE);
@@ -59,6 +59,32 @@ const uploadAndZipFiles = (files) => {
     archive.finalize();
     return zipFileName;
 };
+// @desc get all subtitles
+// @route GET /subtitles
+// @access Public
+const getAllSubtitles = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const pageNumber = Number(req.query.page) || 1;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        select: '-thankedBy -userId',
+        populate: {
+            path: 'userId',
+            select: '_id username reputation isAdmin',
+        },
+        sort: { updatedAt: -1 },
+        lean: true,
+    };
+    const result = yield subtitle_1.default.paginate({}, options);
+    const subtitles = result.docs;
+    for (const item of subtitles) {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.tvShowId));
+        const tvShow = response.data;
+        item.tvShowTitle = tvShow.name;
+    }
+    res.json(result);
+}));
+exports.getAllSubtitles = getAllSubtitles;
 // @desc get all subtitles for a specific episode
 // @route GET /subtitles/:episodeId
 // @access Public
@@ -111,7 +137,7 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
     res.json(subtitles);
 }));
 exports.getSubtitlesForEpisode = getSubtitlesForEpisode;
-// @desc get all subtitles for a specific episode uploader by authenticated user
+// @desc get all subtitles for a specific episode uploaded by authenticated user
 // @route GET /subtitles/my/:episodeId
 // @access Private
 const getUserSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -131,6 +157,29 @@ const getUserSubtitlesForEpisode = (0, express_async_handler_1.default)((req, re
     res.json(subtitles);
 }));
 exports.getUserSubtitlesForEpisode = getUserSubtitlesForEpisode;
+// @desc get all subtitles by a specific user
+// @route GET /subtitles/by/:userId
+// @access Public
+const getSubtitlesByUser = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const pageNumber = Number(req.query.page) || 1;
+    const userId = req.params.userId;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        select: '-thankedBy -userId',
+        sort: { updatedAt: -1 },
+        lean: true,
+    };
+    const result = yield subtitle_1.default.paginate({ userId }, options);
+    const subtitles = result.docs;
+    for (const item of subtitles) {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.tvShowId));
+        const tvShow = response.data;
+        item.tvShowTitle = tvShow.name;
+    }
+    res.json(result);
+}));
+exports.getSubtitlesByUser = getSubtitlesByUser;
 // @desc Add subtitle
 // @route POST /subtitles
 // @access Private
@@ -380,20 +429,48 @@ exports.getPendingSubtitleReports = getPendingSubtitleReports;
 // @route PATCH /subtitles/reports/approved
 // @access Admin
 const getApprovedSubtitleReports = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const reports = yield subtitleReport_1.default.find({
-        status: reportStatus_1.ReportStatus.Approved,
-    }).sort({ updatedAt: -1 });
-    res.status(201).json(reports);
+    const pageNumber = Number(req.query.page) || 1;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        sort: { updatedAt: -1 },
+        populate: [{ path: 'userId', select: '_id username isAdmin reputation' }],
+        lean: true,
+    };
+    const result = yield subtitleReport_1.default.paginate({ status: reportStatus_1.ReportStatus.Approved }, options);
+    res.json(result);
 }));
 exports.getApprovedSubtitleReports = getApprovedSubtitleReports;
 // @desc get all rejected subtitle reports
 // @route PATCH /subtitles/reports/rejected
 // @access Admin
 const getRejectedSubtitleReports = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const reports = yield subtitleReport_1.default.find({
-        status: reportStatus_1.ReportStatus.Rejected,
-    }).sort({ updatedAt: -1 });
-    res.status(201).json(reports);
+    const pageNumber = Number(req.query.page) || 1;
+    const options = {
+        page: pageNumber,
+        limit: pageSize,
+        sort: { updatedAt: -1 },
+        populate: [
+            {
+                path: 'subtitleId',
+                select: '-thankedBy',
+                populate: {
+                    path: 'userId',
+                    select: '_id username isAdmin reputation',
+                },
+            },
+            { path: 'userId', select: '_id username isAdmin reputation' },
+        ],
+        lean: true,
+    };
+    const result = yield subtitleReport_1.default.paginate({ status: reportStatus_1.ReportStatus.Rejected }, options);
+    const reports = result.docs;
+    for (const item of reports) {
+        const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowDetailsUrl)(item.subtitleId.tvShowId));
+        const tvShow = response.data;
+        item.subtitleId.tvShowTitle = tvShow.name;
+    }
+    res.json(result);
 }));
 exports.getRejectedSubtitleReports = getRejectedSubtitleReports;
 // @desc report subtitle
@@ -404,9 +481,16 @@ const reportSubtitle = (0, express_async_handler_1.default)((req, res) => __awai
     const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
     const subtitleId = req.params.subtitleId;
     const report = req.body;
-    const subtitle = yield subtitle_1.default.findById(subtitleId);
+    const subtitle = yield subtitle_1.default.findById(subtitleId).populate('userId');
     if (!subtitle)
         throw new errorMiddleware_1.CustomError('Subtitle not found', 404);
+    if (subtitle.userId._id.equals(userId))
+        throw new errorMiddleware_1.CustomError("You can't report your own subtitle", 409);
+    const uploader = subtitle.userId;
+    if (uploader.isAdmin)
+        throw new errorMiddleware_1.CustomError("You can't report an official subtitle", 409);
+    if (subtitle.isConfirmed)
+        throw new errorMiddleware_1.CustomError("You can't report a confirmed subtitle", 409);
     const foundReport = yield subtitleReport_1.default.findOne({
         userId,
         subtitleId,
@@ -442,6 +526,8 @@ const approveSubtitleReport = (0, express_async_handler_1.default)((req, res) =>
         }
         yield subtitle.deleteOne();
     }
+    report.status = reportStatus_1.ReportStatus.Approved;
+    yield report.save();
     res.json('Success');
 }));
 exports.approveSubtitleReport = approveSubtitleReport;

@@ -47,7 +47,7 @@
             color="primary"
             round
             :loading="isLoading"
-            @click="loadReports(ReportStatus.Pending, true)"
+            @click="loadReports(ReportStatus.Pending)"
           >
             <q-tooltip>Load More</q-tooltip>
           </q-btn>
@@ -77,7 +77,7 @@
             color="primary"
             round
             :loading="isLoading"
-            @click="loadReports(ReportStatus.Pending, true)"
+            @click="loadReports(ReportStatus.Pending)"
           >
             <q-tooltip>Load More</q-tooltip>
           </q-btn>
@@ -106,7 +106,7 @@
             color="primary"
             round
             :loading="isLoading"
-            @click="loadReports(ReportStatus.Pending, true)"
+            @click="loadReports(ReportStatus.Pending)"
           >
             <q-tooltip>Load More</q-tooltip>
           </q-btn>
@@ -137,28 +137,27 @@ export default defineComponent({
     const rejectedReports: Ref<IPaginated<ISubtitleReport> | null> = ref(null)
 
     onMounted(async () => {
-      await loadReports(ReportStatus.Pending, false)
+      await loadReports(ReportStatus.Pending)
     })
 
     watch(tab, async (newValue) => {
-      await loadReports(newValue, false)
+      await loadReports(newValue)
     })
 
-    const loadReports = async (status: ReportStatus, loadMore: boolean) => {
-      let response
+    const loadReports = async (status: ReportStatus) => {
       isLoading.value = true
+      error.value = ''
+      let response
+      let page
       try {
         switch (status) {
           case ReportStatus.Pending:
             if (pendingReports.value) pendingReports.value.docs = []
+            page = pendingReports.value ? pendingReports.value.page + 1 : 1
             response = await api.get(
               ApiEndpoints.getSubtitleReportsWithStatus(
                 ReportStatus[status],
-                loadMore
-                  ? pendingReports.value
-                    ? pendingReports.value.page + 1
-                    : 1
-                  : 1
+                page
               )
             )
             pendingReports.value = response.data
@@ -166,28 +165,22 @@ export default defineComponent({
             break
           case ReportStatus.Approved:
             if (approvedReports.value) approvedReports.value.docs = []
+            page = pendingReports.value ? pendingReports.value.page + 1 : 1
             response = await api.get(
               ApiEndpoints.getSubtitleReportsWithStatus(
                 ReportStatus[status],
-                loadMore
-                  ? approvedReports.value
-                    ? approvedReports.value.page + 1
-                    : 1
-                  : 1
+                page
               )
             )
             approvedReports.value = response.data
             break
           case ReportStatus.Rejected:
             if (rejectedReports.value) rejectedReports.value.docs = []
+            page = pendingReports.value ? pendingReports.value.page + 1 : 1
             response = await api.get(
               ApiEndpoints.getSubtitleReportsWithStatus(
                 ReportStatus[status],
-                loadMore
-                  ? rejectedReports.value
-                    ? rejectedReports.value.page + 1
-                    : 1
-                  : 1
+                page
               )
             )
             rejectedReports.value = response.data
@@ -197,7 +190,7 @@ export default defineComponent({
             throw new Error('status unknown')
         }
       } catch (err: any) {
-        err.value = 'Failed to fetch.'
+        error.value = 'Failed to fetch.'
       } finally {
         isLoading.value = false
       }

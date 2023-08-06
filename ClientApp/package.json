@@ -2,7 +2,7 @@
   "name": "clientapp",
   "version": "0.0.1",
   "description": "SubsWrld Client App",
-  "productName": "SubsWrld App",
+  "productName": "SubWrld",
   "author": "Toni Kazinoti <toni.kazinoti@gmail.com>",
   "private": true,
   "scripts": {

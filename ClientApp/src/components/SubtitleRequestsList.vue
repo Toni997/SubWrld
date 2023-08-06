@@ -8,24 +8,20 @@
     </q-dialog>
 
     <q-dialog v-model="isRequestSubtitleDialogShown" persistent>
-      <q-scroll-area style="width: min(600px, 100%); height: 100%">
-        <request-subtitle-form
-          style="width: min(600px, 100%)"
-          :episode="episode"
-          @request-saved="onRequestSaved"
-        />
-      </q-scroll-area>
+      <request-subtitle-form
+        style="width: min(600px, 100%)"
+        :episode="episode"
+        @request-saved="onRequestSaved"
+      />
     </q-dialog>
 
     <q-dialog v-model="isSubtitleFormShowed" persistent>
-      <q-scroll-area style="width: min(600px, 100%); height: 100%">
-        <subtitle-form
-          style="width: min(600px, 100%)"
-          :episode="episode"
-          :relatedRequestId="relatedRequestId"
-          @subtitle-saved="onSubtitleSaved"
-        />
-      </q-scroll-area>
+      <subtitle-form
+        style="width: min(600px, 100%)"
+        :episode="episode"
+        :relatedRequestId="relatedRequestId"
+        @subtitle-saved="onSubtitleSaved"
+      />
     </q-dialog>
 
     <q-dialog v-model="isSelectSubtitleShown">

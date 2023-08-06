@@ -9,13 +9,11 @@
     </q-dialog>
 
     <q-dialog v-model="isSubtitleFormShowed" persistent>
-      <q-scroll-area style="width: min(600px, 100%); height: 100%">
-        <subtitle-form
-          :episode="episode"
-          :subtitle="subtitleForDialog"
-          @subtitle-saved="onSubtitleSaved"
-        />
-      </q-scroll-area>
+      <subtitle-form
+        :episode="episode"
+        :subtitle="subtitleForDialog"
+        @subtitle-saved="onSubtitleSaved"
+      />
     </q-dialog>
 
     <q-dialog v-model="isReportDialogShown" persistent>
@@ -56,179 +54,179 @@
         color="primary"
         @click="addClick"
       ></q-btn>
-      <q-scroll-area style="width: 100%; height: 600px">
-        <q-table
-          class="q-mt-md text-body1"
-          bordered
-          :loading="isLoading"
-          ref="tableRef"
-          :rows="rows"
-          :columns="columns"
-          row-key="id"
-        >
-          <template v-slot:loading>
-            <q-inner-loading showing color="primary" />
-          </template>
+      <q-table
+        class="q-mt-md text-body1"
+        bordered
+        :loading="isLoading"
+        ref="tableRef"
+        :rows="rows"
+        :columns="columns"
+        row-key="id"
+      >
+        <template v-slot:loading>
+          <q-inner-loading showing color="primary" />
+        </template>
 
-          <template v-slot:header="props">
-            <q-tr :props="props">
-              <q-th auto-width />
-              <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
-              </q-th>
-            </q-tr>
-          </template>
+        <template v-slot:header="props">
+          <q-tr :props="props">
+            <q-th auto-width />
+            <q-th v-for="col in props.cols" :key="col.name" :props="props">
+              {{ col.label }}
+            </q-th>
+          </q-tr>
+        </template>
 
-          <template v-slot:body="props">
-            <q-tr
-              :props="props"
-              :class="{
-                'just-added': props.row._id === episode.justAddedSubtitleId,
-              }"
-            >
-              <q-td auto-width>
+        <template v-slot:body="props">
+          <q-tr
+            :props="props"
+            :class="{
+              'just-added': props.row._id === episode.justAddedSubtitleId,
+            }"
+          >
+            <q-td auto-width>
+              <q-btn
+                size="sm"
+                color="primary"
+                round
+                dense
+                @click="
+                  columnExpanded[props.rowIndex] =
+                    !columnExpanded[props.rowIndex]
+                "
+                :icon="columnExpanded[props.rowIndex] ? 'remove' : 'add'"
+              >
+                <q-tooltip>See release</q-tooltip>
+              </q-btn>
+            </q-td>
+            <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              <span
+                v-if="
+                  col.name !== 'actions' &&
+                  col.name !== 'download' &&
+                  col.name !== 'uploadedBy'
+                "
+              >
+                {{ col.value }}
+              </span>
+              <span v-if="col.name === 'uploadedBy'">
                 <q-btn
-                  size="sm"
-                  color="primary"
-                  round
+                  flat
                   dense
-                  @click="
-                    columnExpanded[props.rowIndex] =
-                      !columnExpanded[props.rowIndex]
-                  "
-                  :icon="columnExpanded[props.rowIndex] ? 'remove' : 'add'"
+                  no-caps
+                  v-if="!props.row.user.isAdmin"
+                  :to="`/users/${props.row.user._id}`"
                 >
-                  <q-tooltip>See release</q-tooltip>
+                  {{ props.row.user.username }}
                 </q-btn>
-              </q-td>
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                <span
-                  v-if="
-                    col.name !== 'actions' &&
-                    col.name !== 'download' &&
-                    col.name !== 'uploadedBy'
+                <q-chip
+                  text-color="white"
+                  :icon="props.row.user.isAdmin ? 'verified' : 'grade'"
+                  size="0.7rem"
+                  :color="
+                    getReputationBadgeColor(
+                      props.row.user.reputation,
+                      props.row.user.isAdmin
+                    )
                   "
+                  >{{
+                    props.row.user.isAdmin
+                      ? 'Official'
+                      : props.row.user.reputation
+                  }}
+                  <q-tooltip>{{
+                    props.row.user.isAdmin ? 'Uploaded by Staff' : 'Reputation'
+                  }}</q-tooltip>
+                </q-chip>
+              </span>
+              <span v-if="col.name === 'download'">
+                <q-btn
+                  v-if="props.row.filePath"
+                  :href="ApiEndpoints.downloadSubtitle(props.row._id)"
+                  icon="download"
+                  color="primary"
+                  flat
+                  round
                 >
-                  {{ col.value }}
-                </span>
-                <span v-if="col.name === 'uploadedBy'">
-                  <q-btn
-                    flat
-                    v-if="!props.row.user.isAdmin"
-                    :href="`/users/${props.row.user._id}`"
-                  >
-                    {{ props.row.user.username }}
-                  </q-btn>
-                  <q-chip
-                    text-color="white"
-                    :icon="props.row.user.isAdmin ? 'verified' : 'grade'"
-                    size="0.7rem"
-                    :color="
-                      getReputationBadgeColor(
-                        props.row.user.reputation,
-                        props.row.user.isAdmin
-                      )
-                    "
-                    >{{
-                      props.row.user.isAdmin
-                        ? 'Official'
-                        : props.row.user.reputation
-                    }}
-                    <q-tooltip>{{
-                      props.row.user.isAdmin
-                        ? 'Uploaded by Staff'
-                        : 'Reputation'
-                    }}</q-tooltip>
-                  </q-chip>
-                </span>
-                <span v-if="col.name === 'download'">
-                  <q-btn
-                    v-if="props.row.filePath"
-                    :href="ApiEndpoints.downloadSubtitle(props.row._id)"
-                    icon="download"
-                    color="primary"
-                    flat
-                    round
-                  >
-                    <q-tooltip>Click to Download</q-tooltip>
-                  </q-btn>
-                  <q-icon
-                    class="q-pa-xs"
-                    v-if="!props.row.filePath"
-                    name="file_download_off"
-                    size="1.5rem"
-                    color="red"
-                  >
-                    <q-tooltip>Not Yet Available</q-tooltip>
-                  </q-icon>
-                </span>
-                <span v-if="col.name === 'actions'">
-                  <q-btn icon="more_horiz" flat round>
-                    <q-menu>
-                      <q-list>
-                        <q-item
-                          v-if="!props.row.isConfirmed && !auth.isAdmin()"
-                          clickable
-                          @click="reportClick(props.row)"
-                          v-close-popup
-                        >
-                          <q-item-section>Report</q-item-section>
-                        </q-item>
-                        <q-item
-                          v-if="
-                            !props.row.isConfirmed &&
-                            !props.row.isWorkInProgress &&
-                            auth.isAdmin()
-                          "
-                          clickable
-                          @click="() => confirmClick(props.row)"
-                          v-close-popup
-                        >
-                          <q-item-section>Confirm</q-item-section>
-                        </q-item>
-                        <q-item
-                          v-if="
-                            !props.row.isThankedByUser && !props.row.isOwner
-                          "
-                          clickable
-                          @click="() => thankYouClick(props.row)"
-                          v-close-popup
-                        >
-                          <q-item-section>Thank You</q-item-section>
-                        </q-item>
-                        <q-item
-                          v-if="
-                            !props.row.isConfirmed &&
-                            (props.row.isOwner || auth.isAdmin())
-                          "
-                          clickable
-                          @click="editClick(props.row)"
-                          v-close-popup
-                        >
-                          <q-item-section>Edit</q-item-section>
-                        </q-item>
-                        <q-item
-                          v-if="props.row.isOwner || auth.isAdmin()"
-                          clickable
-                          @click="deleteSubtitleClick(props.row._id)"
-                          v-close-popup
-                        >
-                          <q-item-section>Delete</q-item-section>
-                        </q-item>
-                        <q-separator />
-                      </q-list>
-                    </q-menu> </q-btn
-                ></span>
-              </q-td>
-            </q-tr>
-            <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
-              <q-td colspan="100%">
-                <div class="text-left">{{ props.row.release }}</div>
-              </q-td>
-            </q-tr>
-          </template>
-        </q-table>
-      </q-scroll-area>
+                  <q-tooltip>Click to Download</q-tooltip>
+                </q-btn>
+                <q-icon
+                  class="q-pa-xs"
+                  v-if="!props.row.filePath"
+                  name="file_download_off"
+                  size="1.5rem"
+                  color="red"
+                >
+                  <q-tooltip>Not Yet Available</q-tooltip>
+                </q-icon>
+              </span>
+              <span v-if="col.name === 'actions'">
+                <q-btn icon="more_horiz" flat round>
+                  <q-menu>
+                    <q-list>
+                      <q-item
+                        v-if="
+                          !props.row.isConfirmed &&
+                          !props.row.isOwner &&
+                          !auth.isAdmin()
+                        "
+                        clickable
+                        @click="reportClick(props.row)"
+                        v-close-popup
+                      >
+                        <q-item-section>Report</q-item-section>
+                      </q-item>
+                      <q-item
+                        v-if="
+                          !props.row.isConfirmed &&
+                          !props.row.isWorkInProgress &&
+                          auth.isAdmin()
+                        "
+                        clickable
+                        @click="() => confirmClick(props.row)"
+                        v-close-popup
+                      >
+                        <q-item-section>Confirm</q-item-section>
+                      </q-item>
+                      <q-item
+                        v-if="!props.row.isThankedByUser && !props.row.isOwner"
+                        clickable
+                        @click="() => thankYouClick(props.row)"
+                        v-close-popup
+                      >
+                        <q-item-section>Thank You</q-item-section>
+                      </q-item>
+                      <q-item
+                        v-if="
+                          !props.row.isConfirmed &&
+                          (props.row.isOwner || auth.isAdmin())
+                        "
+                        clickable
+                        @click="editClick(props.row)"
+                        v-close-popup
+                      >
+                        <q-item-section>Edit</q-item-section>
+                      </q-item>
+                      <q-item
+                        v-if="props.row.isOwner || auth.isAdmin()"
+                        clickable
+                        @click="deleteSubtitleClick(props.row._id)"
+                        v-close-popup
+                      >
+                        <q-item-section>Delete</q-item-section>
+                      </q-item>
+                      <q-separator />
+                    </q-list>
+                  </q-menu> </q-btn
+              ></span>
+            </q-td>
+          </q-tr>
+          <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
+            <q-td colspan="100%">
+              <div class="text-left">{{ props.row.release }}</div>
+            </q-td>
+          </q-tr>
+        </template>
+      </q-table>
     </q-card-section>
   </q-card>
 </template>

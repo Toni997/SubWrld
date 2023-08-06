@@ -1,23 +1,7 @@
-import mongoose, { PaginateModel, Schema, model } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/common'
+import { PaginateModel, Schema, model } from 'mongoose'
 import { ReportStatus } from '../utils/reportStatus'
 import paginate from 'mongoose-paginate-v2'
-
-export interface ISubtitleReportForm {
-  reason: string
-}
-
-export interface ICreateSubtitleReport extends ISubtitleReportForm {
-  subtitleId: mongoose.Types.ObjectId | null
-}
-
-export interface ISubtitleReport
-  extends IID,
-    ITimestamps,
-    ICreateSubtitleReport {
-  userId: mongoose.Types.ObjectId
-  status: ReportStatus
-}
+import { ISubtitleReport } from '../interfaces/subtitleReport'
 
 const subtitleReportSchema = new Schema(
   {

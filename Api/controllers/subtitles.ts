@@ -1,9 +1,7 @@
 import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
-import SubtitleRequest, {
-  ICreateSubtitleRequest,
-} from '../models/subtitleRequest'
-import User, { IUser } from '../models/user'
+import { ICreateSubtitleRequest } from '../interfaces/subtitleRequest'
+import { IUser } from '../interfaces/user'
 import { IAuthUserRequest } from '../interfaces/request'
 import axios from 'axios'
 import {
@@ -12,11 +10,11 @@ import {
 } from '../utils/tmdb-api'
 import { ITVShowDetails, ITVShowEpisode } from '../interfaces/tv-shows'
 import mongoose from 'mongoose'
-import Subtitle, {
+import {
   ICreateSubtitle,
   ICreateSubtitleForm,
   IUpdateSubtitleForm,
-} from '../models/subtitle'
+} from '../interfaces/subtitle'
 import { v4 as uuidv4 } from 'uuid'
 import archiver from 'archiver'
 import fs from 'fs'
@@ -29,13 +27,14 @@ import {
 import { CustomError } from '../middleware/errorMiddleware'
 import { Magic, MAGIC_MIME_TYPE } from 'mmmagic'
 import { convertStringifiedBoolean } from '../utils/convertStringifiedBoolean'
-import SubtitleReport, {
-  ISubtitleReportForm,
-  ISubtitleReportWithTVShowTitle,
-} from '../models/subtitleReport'
+import { ISubtitleReportForm } from '../interfaces/subtitleReport'
 import { ReportStatus } from '../utils/reportStatus'
-import { IAnnouncementWithTVShowTitle } from '../models/announcement'
-import { ISubtitleReportResponse } from '../interfaces/report'
+import { ISubtitleReportResponse } from '../interfaces/subtitleReport'
+import SubtitleReport from '../models/subtitleReport'
+import SubtitleRequest from '../models/subtitleRequest'
+import User from '../models/user'
+import { ISubtitleWithTVShowTitle } from '../interfaces/subtitle'
+import Subtitle from '../models/subtitle'
 
 const pageSize = 10
 
@@ -72,6 +71,37 @@ const uploadAndZipFiles = (files: Express.Multer.File[]) => {
   archive.finalize()
   return zipFileName
 }
+
+// @desc get all subtitles
+// @route GET /subtitles
+// @access Public
+const getAllSubtitles = asyncHandler(async (req: Request, res: Response) => {
+  const pageNumber = Number(req.query.page) || 1
+
+  const options = {
+    page: pageNumber,
+    limit: pageSize,
+    select: '-thankedBy -userId',
+    populate: {
+      path: 'userId',
+      select: '_id username reputation isAdmin',
+    },
+    sort: { updatedAt: -1 },
+    lean: true,
+  }
+
+  const result = await Subtitle.paginate({}, options)
+
+  const subtitles = result.docs as unknown as ISubtitleWithTVShowTitle[]
+
+  for (const item of subtitles) {
+    const response = await axios.get(getTVShowDetailsUrl(item.tvShowId))
+    const tvShow: ITVShowDetails = response.data
+    item.tvShowTitle = tvShow.name
+  }
+
+  res.json(result)
+})
 
 // @desc get all subtitles for a specific episode
 // @route GET /subtitles/:episodeId
@@ -128,7 +158,7 @@ const getSubtitlesForEpisode = asyncHandler(
   }
 )
 
-// @desc get all subtitles for a specific episode uploader by authenticated user
+// @desc get all subtitles for a specific episode uploaded by authenticated user
 // @route GET /subtitles/my/:episodeId
 // @access Private
 const getUserSubtitlesForEpisode = asyncHandler(
@@ -150,6 +180,34 @@ const getUserSubtitlesForEpisode = asyncHandler(
     res.json(subtitles)
   }
 )
+
+// @desc get all subtitles by a specific user
+// @route GET /subtitles/by/:userId
+// @access Public
+const getSubtitlesByUser = asyncHandler(async (req: Request, res: Response) => {
+  const pageNumber = Number(req.query.page) || 1
+  const userId = req.params.userId
+
+  const options = {
+    page: pageNumber,
+    limit: pageSize,
+    select: '-thankedBy -userId',
+    sort: { updatedAt: -1 },
+    lean: true,
+  }
+
+  const result = await Subtitle.paginate({ userId }, options)
+
+  const subtitles = result.docs as unknown as ISubtitleWithTVShowTitle[]
+
+  for (const item of subtitles) {
+    const response = await axios.get(getTVShowDetailsUrl(item.tvShowId))
+    const tvShow: ITVShowDetails = response.data
+    item.tvShowTitle = tvShow.name
+  }
+
+  res.json(result)
+})
 
 // @desc Add subtitle
 // @route POST /subtitles
@@ -500,11 +558,22 @@ const getPendingSubtitleReports = asyncHandler(
 // @access Admin
 const getApprovedSubtitleReports = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
-    const reports = await SubtitleReport.find({
-      status: ReportStatus.Approved,
-    }).sort({ updatedAt: -1 })
+    const pageNumber = Number(req.query.page) || 1
 
-    res.status(201).json(reports)
+    const options = {
+      page: pageNumber,
+      limit: pageSize,
+      sort: { updatedAt: -1 },
+      populate: [{ path: 'userId', select: '_id username isAdmin reputation' }],
+      lean: true,
+    }
+
+    const result = await SubtitleReport.paginate(
+      { status: ReportStatus.Approved },
+      options
+    )
+
+    res.json(result)
   }
 )
 
@@ -513,11 +582,42 @@ const getApprovedSubtitleReports = asyncHandler(
 // @access Admin
 const getRejectedSubtitleReports = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
-    const reports = await SubtitleReport.find({
-      status: ReportStatus.Rejected,
-    }).sort({ updatedAt: -1 })
+    const pageNumber = Number(req.query.page) || 1
 
-    res.status(201).json(reports)
+    const options = {
+      page: pageNumber,
+      limit: pageSize,
+      sort: { updatedAt: -1 },
+      populate: [
+        {
+          path: 'subtitleId',
+          select: '-thankedBy',
+          populate: {
+            path: 'userId',
+            select: '_id username isAdmin reputation',
+          },
+        },
+        { path: 'userId', select: '_id username isAdmin reputation' },
+      ],
+      lean: true,
+    }
+
+    const result = await SubtitleReport.paginate(
+      { status: ReportStatus.Rejected },
+      options
+    )
+
+    const reports = result.docs as unknown as ISubtitleReportResponse[]
+
+    for (const item of reports) {
+      const response = await axios.get(
+        getTVShowDetailsUrl(item.subtitleId.tvShowId)
+      )
+      const tvShow: ITVShowDetails = response.data
+      item.subtitleId.tvShowTitle = tvShow.name
+    }
+
+    res.json(result)
   }
 )
 
@@ -530,9 +630,20 @@ const reportSubtitle = asyncHandler(
     const subtitleId = req.params.subtitleId
     const report: ISubtitleReportForm = req.body
 
-    const subtitle = await Subtitle.findById(subtitleId)
+    const subtitle = await Subtitle.findById(subtitleId).populate('userId')
 
     if (!subtitle) throw new CustomError('Subtitle not found', 404)
+
+    if (subtitle.userId._id.equals(userId))
+      throw new CustomError("You can't report your own subtitle", 409)
+
+    const uploader = subtitle.userId as unknown as IUser
+
+    if (uploader.isAdmin)
+      throw new CustomError("You can't report an official subtitle", 409)
+
+    if (subtitle.isConfirmed)
+      throw new CustomError("You can't report a confirmed subtitle", 409)
 
     const foundReport = await SubtitleReport.findOne({
       userId,
@@ -579,6 +690,9 @@ const approveSubtitleReport = asyncHandler(
       }
       await subtitle.deleteOne()
     }
+
+    report.status = ReportStatus.Approved
+    await report.save()
 
     res.json('Success')
   }
@@ -823,4 +937,6 @@ export {
   getPendingSubtitleReports,
   getApprovedSubtitleReports,
   getRejectedSubtitleReports,
+  getSubtitlesByUser,
+  getAllSubtitles,
 }

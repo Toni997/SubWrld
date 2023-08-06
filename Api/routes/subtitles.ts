@@ -24,6 +24,8 @@ import {
   getRejectedSubtitleReports,
   approveSubtitleReport,
   rejectSubtitleReport,
+  getSubtitlesByUser,
+  getAllSubtitles,
 } from '../controllers/subtitles'
 import { validateBody } from '../middleware/bodyMiddleware'
 import { createSubtitleMulter, updateSubtitleMulter } from '../config/multer'
@@ -32,6 +34,8 @@ import { subtitleRequestValidator } from '../middleware/validators/subtitleReque
 import { subtitleReportValidator } from '../middleware/validators/subtitleReportValidator'
 
 const subtitleRouter: Router = express.Router()
+
+subtitleRouter.get('', authenticate, getAllSubtitles)
 
 subtitleRouter.post(
   '',
@@ -96,6 +100,7 @@ subtitleRouter.patch(
   confirmSubtitle
 )
 
+subtitleRouter.get('/by/:userId', getSubtitlesByUser)
 subtitleRouter.get('/my/:episodeId', authenticate, getUserSubtitlesForEpisode)
 subtitleRouter.get('/:episodeId', passUserToRequest, getSubtitlesForEpisode)
 

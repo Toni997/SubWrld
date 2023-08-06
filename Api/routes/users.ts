@@ -12,6 +12,7 @@ import {
   markEpisodeWatched,
   checkEpisodeWatched,
   setDarkMode,
+  getUsersOrderedByReputation,
 } from '../controllers/users'
 import { authenticate } from '../middleware/authMiddleware'
 import { validateBody } from '../middleware/bodyMiddleware'
@@ -50,6 +51,7 @@ usersRouter.delete(
   authenticate,
   removeEpisodeFromWatched
 )
+usersRouter.get('/by-reputation', getUsersOrderedByReputation)
 usersRouter.get('/:userId', getUser)
 usersRouter.put('/', authenticate, updateUser)
 

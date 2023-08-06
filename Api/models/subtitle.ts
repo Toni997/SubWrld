@@ -1,53 +1,6 @@
-import mongoose, { Schema, model, mongo } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/common'
-
-export interface ICreateSubtitleForm {
-  tvShowId: string
-  season: string
-  episode: string
-  language: string
-  frameRate: string
-  forHearingImpaired: string
-  isWorkInProgress: string
-  onlyForeignLanguage: string
-  uploaderIsAuthor: string
-  release: string
-  subtitleRequestId: string | undefined
-}
-
-export interface IUpdateSubtitleForm {
-  language: string
-  frameRate: string
-  forHearingImpaired: string
-  isWorkInProgress: string
-  onlyForeignLanguage: string
-  uploaderIsAuthor: string
-  release: string
-}
-
-export interface ICreateSubtitle {
-  userId: mongoose.Types.ObjectId
-  tvShowId: number
-  season: number
-  episode: number
-  episodeId: number
-  language: string
-  frameRate: number
-  forHearingImpaired: boolean
-  isWorkInProgress: boolean
-  onlyForeignLanguage: boolean
-  uploaderIsAuthor: boolean
-  release: string
-  filePath: string | null
-  subtitleRequestId: mongoose.Types.ObjectId | null
-}
-
-export interface ISubtitle extends IID, ITimestamps, ICreateSubtitle {
-  downloads: number
-  thankedByCount: number
-  isConfirmed: boolean
-  thankedBy: mongoose.Types.ObjectId[]
-}
+import { PaginateModel, Schema, model } from 'mongoose'
+import paginate from 'mongoose-paginate-v2'
+import { ISubtitle } from '../interfaces/subtitle'
 
 const subtitleSchema = new Schema(
   {
@@ -142,6 +95,11 @@ subtitleSchema.virtual('thankedByCount').get(function () {
   return this.thankedBy.length
 })
 
-const Subtitle = model<ISubtitle>('Subtitle', subtitleSchema)
+subtitleSchema.plugin(paginate)
+
+const Subtitle = model<ISubtitle, PaginateModel<ISubtitle>>(
+  'Subtitle',
+  subtitleSchema
+)
 
 export default Subtitle

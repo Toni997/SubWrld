@@ -1,4 +1,4 @@
-import { IID } from './common'
+import { IID, ITimestamps } from './common'
 
 export interface UserInfo extends IID {
   username: string
@@ -23,4 +23,12 @@ export interface IUserRefWithReputation extends IID {
   username: string
   isAdmin: boolean
   reputation: number
+}
+
+export interface IUser extends IID, ITimestamps {
+  username: string
+  email: string
+  reputation: number
+  isAdmin: boolean
+  darkMode: boolean
 }

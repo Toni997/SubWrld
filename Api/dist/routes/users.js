@@ -21,6 +21,7 @@ usersRouter.get('/watchlist', authMiddleware_1.authenticate, users_1.getWatchlis
 usersRouter.get('/watched/:episodeId', authMiddleware_1.authenticate, users_1.checkEpisodeWatched);
 usersRouter.post('/mark-watched', authMiddleware_1.authenticate, (0, bodyMiddleware_1.validateBody)(watchedEpisodesValidator_1.markWatchedValidator), users_1.markEpisodeWatched);
 usersRouter.delete('/mark-unwatched/:episodeId', authMiddleware_1.authenticate, users_1.removeEpisodeFromWatched);
+usersRouter.get('/by-reputation', users_1.getUsersOrderedByReputation);
 usersRouter.get('/:userId', users_1.getUser);
 usersRouter.put('/', authMiddleware_1.authenticate, users_1.updateUser);
 exports.default = usersRouter;

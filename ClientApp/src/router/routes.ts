@@ -9,6 +9,7 @@ import { useAuthStore } from 'src/stores/auth-store'
 import TVShowDetailsPageVue from 'src/pages/TVShowDetailsPage.vue'
 import WatchlistPage from 'src/pages/WatchlistPage.vue'
 import ReportsPage from 'src/pages/ReportsPage.vue'
+import UserDetailsPage from 'src/pages/UserDetailsPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -70,6 +71,15 @@ const routes: RouteRecordRaw[] = [
               }
               next('/')
             },
+          },
+        ],
+      },
+      {
+        path: '/users',
+        children: [
+          {
+            path: ':userId',
+            component: UserDetailsPage,
           },
         ],
       },

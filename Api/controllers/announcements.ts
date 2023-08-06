@@ -1,16 +1,16 @@
 import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
-import Announcement, {
+import {
   IAnnouncementForm,
-  IAnnouncementWithTVShowTitle,
   ICreateAnnouncement,
-} from '../models/announcement'
+} from '../interfaces/announcement'
 import axios from 'axios'
 import { getTVShowDetailsUrl } from '../utils/tmdb-api'
 import { CustomError } from '../middleware/errorMiddleware'
 import { IAuthUserRequest } from '../interfaces/request'
 import { Types } from 'mongoose'
 import { ITVShowDetails } from '../interfaces/tv-shows'
+import Announcement from '../models/announcement'
 
 const pageSize = 10
 

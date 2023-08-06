@@ -7,13 +7,11 @@
       icon="autorenew"
     >
       <q-dialog v-model="isRequestSubtitleDialogShown" persistent>
-        <q-scroll-area style="width: min(600px, 100%); height: 100%">
-          <request-subtitle-form
-            style="width: min(600px, 100%)"
-            :episode="episodeForDialog"
-            @request-saved="onSubtitleRequestSaved"
-          />
-        </q-scroll-area>
+        <request-subtitle-form
+          style="width: min(600px, 100%)"
+          :episode="episodeForDialog"
+          @request-saved="onSubtitleRequestSaved"
+        />
       </q-dialog>
       <q-dialog v-model="isSubtitleDialogShown" persistent>
         <subtitle-form
@@ -35,9 +33,10 @@
         />
       </q-dialog>
       <q-dialog v-model="isAnnouncementDialogShown" v-if="tvShowDetails">
-        <q-scroll-area style="width: min(600px, 100%); height: 100%">
-          <announcements-list :tvShowId="tvShowDetails.id" />
-        </q-scroll-area>
+        <announcements-list
+          style="width: min(600px, 100%)"
+          :tvShowId="tvShowDetails.id"
+        />
       </q-dialog>
       <q-dialog v-model="markWatchedDialog">
         <q-card>

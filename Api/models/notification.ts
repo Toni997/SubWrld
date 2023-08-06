@@ -1,15 +1,6 @@
-import mongoose, { Schema, model } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/common'
-
-export interface INotificationForm {
-  text: string
-}
-
-export interface ICreateNotification extends INotificationForm {
-  userId: number
-}
-
-export interface INotification extends IID, ITimestamps, ICreateNotification {}
+import { PaginateModel, Schema, model } from 'mongoose'
+import { INotification } from '../interfaces/notification'
+import paginate from 'mongoose-paginate-v2'
 
 const notificationSchema = new Schema(
   {
@@ -29,6 +20,11 @@ const notificationSchema = new Schema(
   }
 )
 
-const Notification = model<INotification>('Notification', notificationSchema)
+notificationSchema.plugin(paginate)
+
+const Notification = model<INotification, PaginateModel<INotification>>(
+  'Notification',
+  notificationSchema
+)
 
 export default Notification

@@ -10,6 +10,7 @@ import usersRouter from './routes/users'
 import tvShowRouter from './routes/tv-shows'
 import subtitleRouter from './routes/subtitles'
 import announcementRouter from './routes/announcements'
+import notificationRouter from './routes/notifications'
 
 dotenv.config()
 
@@ -31,6 +32,7 @@ app.use('/users', usersRouter)
 app.use('/tv-shows', tvShowRouter)
 app.use('/subtitles', subtitleRouter)
 app.use('/announcements', announcementRouter)
+app.use('/notifications', notificationRouter)
 
 app.use(notFound)
 app.use(errorHandler)

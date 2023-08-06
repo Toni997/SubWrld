@@ -14,10 +14,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAnnouncement = exports.getAllAnnouncementsForWatchlistedTVShowOnly = exports.getAllAnnouncements = exports.getAnnouncementsForTVShow = exports.updateAnnouncement = exports.addAnnouncement = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-const announcement_1 = __importDefault(require("../models/announcement"));
 const axios_1 = __importDefault(require("axios"));
 const tmdb_api_1 = require("../utils/tmdb-api");
 const errorMiddleware_1 = require("../middleware/errorMiddleware");
+const announcement_1 = __importDefault(require("../models/announcement"));
 const pageSize = 10;
 // @desc add new announcement for a tv show
 // @route POST /announcements/tv-show/:tvShowId

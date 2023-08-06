@@ -1,30 +1,7 @@
-import mongoose, { Schema, model, Types, Model } from 'mongoose'
-import bcrypt, { decodeBase64 } from 'bcryptjs'
-import { IID, ITimestamps } from '../interfaces/common'
-
-export interface IUpdateUser extends IID {
-  username: string
-  email: string
-  password: string
-}
-
-export interface IUser extends IID, ITimestamps, IUserMethods {
-  username: string
-  email: string
-  password: string
-  isAdmin: boolean
-  darkMode: boolean
-  reputation: number
-}
-
-export interface IUserWithRefs extends IUser {
-  watchlist: mongoose.Types.ObjectId[]
-  watchedEpisodes: mongoose.Types.ObjectId[]
-}
-
-interface IUserMethods {
-  matchPassword(password: string): Promise<boolean>
-}
+import { Schema, model, PaginateModel } from 'mongoose'
+import bcrypt from 'bcryptjs'
+import paginate from 'mongoose-paginate-v2'
+import { IUser } from '../interfaces/user'
 
 const userSchema = new Schema(
   {
@@ -94,6 +71,8 @@ userSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt)
 })
 
-const User = model<IUser>('User', userSchema)
+userSchema.plugin(paginate)
+
+const User = model<IUser, PaginateModel<IUser>>('User', userSchema)
 
 export default User

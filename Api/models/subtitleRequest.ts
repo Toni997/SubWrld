@@ -1,24 +1,5 @@
-import mongoose, { Schema, model, mongo } from 'mongoose'
-import { IID, ITimestamps } from '../interfaces/common'
-
-export interface ICreateSubtitleRequest {
-  userId: mongoose.Types.ObjectId
-  tvShowId: number
-  season: number
-  episode: number
-  episodeId: number
-  preferredLanguage: string
-  preferredFrameRate: number | null
-  preferForHearingImpaired: boolean
-  comment: string | null
-}
-
-export interface ISubtitleRequest
-  extends IID,
-    ITimestamps,
-    ICreateSubtitleRequest {
-  subtitleId: mongoose.Types.ObjectId | null
-}
+import { Schema, model } from 'mongoose'
+import { ISubtitleRequest } from '../interfaces/subtitleRequest'
 
 const subtitleRequestSchema = new Schema(
   {
