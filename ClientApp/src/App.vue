@@ -19,8 +19,11 @@ export default {
       if (decoded.exp >= currentTime) {
         auth.loadUserInfo(decoded)
       } else {
+        auth.initDarkMode()
         localStorage.removeItem('token')
       }
+    } else {
+      auth.initDarkMode()
     }
 
     $q.dark.set(auth.darkMode)

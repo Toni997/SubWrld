@@ -72,9 +72,8 @@ userSchema.methods.matchPassword = function (enteredPassword) {
 };
 userSchema.pre('save', function (next) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!this.isModified('password')) {
+        if (!this.isModified('password'))
             next();
-        }
         const salt = yield bcryptjs_1.default.genSalt(10);
         this.password = yield bcryptjs_1.default.hash(this.password, salt);
     });

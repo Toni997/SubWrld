@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { Types } from 'mongoose'
-import { IUser } from '../models/user'
+import { IUser } from '../interfaces/user'
 
 const generateToken = (user: IUser) => {
   return jwt.sign(

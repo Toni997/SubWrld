@@ -33,7 +33,6 @@ const addAnnouncement = asyncHandler(async (req: Request, res: Response) => {
 const updateAnnouncement = asyncHandler(async (req: Request, res: Response) => {
   const announcementId = req.params.announcementId
   const announcement: IAnnouncementForm = req.body
-  console.log(announcementId)
   const existingAnnouncement = await Announcement.findById(announcementId)
 
   if (!existingAnnouncement)

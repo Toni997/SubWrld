@@ -44,9 +44,8 @@ const ensureAllowedMimeTypeForFiles = (files: Express.Multer.File[]) => {
     const filePath = path.join(tempFolderPath, file.filename)
     magic.detectFile(filePath, function (err, result) {
       if (err) throw new CustomError('Unsupported files', 415)
-      if (!allowedMimeTypes.includes(result as string)) {
+      if (!allowedMimeTypes.includes(result as string))
         throw new CustomError('Unsupported files', 415)
-      }
     })
   }
 }
@@ -113,6 +112,7 @@ const getSubtitlesForEpisode = asyncHandler(
 
     if (!episodeId) throw new CustomError('Invalid parameter', 400)
 
+    console.log('callleeeed')
     const subtitles = await Subtitle.aggregate([
       {
         $match: { episodeId },
@@ -124,9 +124,6 @@ const getSubtitlesForEpisode = asyncHandler(
           foreignField: '_id',
           as: 'user',
         },
-      },
-      {
-        $unwind: '$user',
       },
       {
         $addFields: {

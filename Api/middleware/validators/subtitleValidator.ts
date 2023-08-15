@@ -1,5 +1,5 @@
 import { languages } from 'countries-list'
-import Joi from '@hapi/joi'
+import Joi from 'joi'
 
 const createSubtitleValidator = Joi.object({
   tvShowId: Joi.number().integer().positive().required(),

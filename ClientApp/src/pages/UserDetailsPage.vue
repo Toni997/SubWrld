@@ -28,7 +28,7 @@
             :color="getReputationBadgeColor(user.reputation, user.isAdmin)"
             >{{ user.isAdmin ? 'Official' : user.reputation }}
             <q-tooltip>{{
-              user.isAdmin ? 'Uploaded by Staff' : 'Reputation'
+              user.isAdmin ? 'Member of Staff' : 'Reputation'
             }}</q-tooltip>
           </q-chip>
         </h5>

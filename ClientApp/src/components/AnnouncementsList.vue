@@ -24,7 +24,7 @@
     <q-card-section>
       <div class="q-mb-md">
         <q-btn
-          v-if="auth.isAdmin()"
+          v-if="auth.isAdmin"
           label="Add Announcement"
           color="primary"
           @click="onAddAnnouncementClick"
@@ -66,7 +66,7 @@
               {{ announcement.text }}
             </q-item-label>
           </q-item-section>
-          <q-item-section side top v-if="auth.isAdmin()">
+          <q-item-section side top v-if="auth.isAdmin">
             <q-item-label caption>
               <q-btn
                 icon="edit"

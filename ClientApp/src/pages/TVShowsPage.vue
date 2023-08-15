@@ -88,13 +88,13 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, watch, Ref } from 'vue'
+import { ref, onMounted, watch, Ref, defineComponent } from 'vue'
 import { ITVShowBase } from '../interfaces/tv-show'
 import { tmdbImageBaseUrl } from '../config/tmdbConfig'
 import { api, ApiEndpoints } from '../boot/axios'
 import truncate from 'truncate'
 
-export default {
+export default defineComponent({
   setup() {
     const popularTVShows: Ref<ITVShowBase[]> = ref([])
     const error: Ref<string> = ref('')
@@ -165,7 +165,7 @@ export default {
       divideRatingByTwo,
     }
   },
-}
+})
 </script>
 
 <style lang="scss">

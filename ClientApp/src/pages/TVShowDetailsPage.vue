@@ -175,7 +175,7 @@
                 tvShowDetails.created_by.map((c) => c.name).join(', ')
               }}</strong>
             </p>
-            <div class="q-mt-md" v-if="auth.isLoggedIn()">
+            <div class="q-mt-md" v-if="auth.isLoggedIn">
               <q-btn
                 :label="
                   tvShowDetails.is_watchlisted_by_user
@@ -276,7 +276,7 @@
                             <q-item
                               clickable
                               @click="uploadSubtitleClick(episode)"
-                              v-if="auth.isLoggedIn()"
+                              v-if="auth.isLoggedIn"
                               v-close-popup
                             >
                               <q-item-section>Upload Subtitle</q-item-section>
@@ -292,7 +292,7 @@
                             <q-item
                               clickable
                               @click="requestSubtitleClick(episode)"
-                              v-if="auth.isLoggedIn()"
+                              v-if="auth.isLoggedIn"
                               v-close-popup
                             >
                               <q-item-section>Request Subtitle</q-item-section>
@@ -304,7 +304,7 @@
                     <q-item-section
                       side
                       v-if="
-                        auth.isLoggedIn() &&
+                        auth.isLoggedIn &&
                         episode.air_date &&
                         isAirDateDayInThePastOrPresen(episode.air_date)
                       "

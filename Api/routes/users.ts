@@ -20,7 +20,7 @@ import { markWatchedValidator } from '../middleware/validators/watchedEpisodesVa
 import { removeFromWatchlistValidator } from '../middleware/validators/watchlistValidator'
 import { setDarkModeValidator } from '../middleware/validators/setDarkModeValidator'
 
-const usersRouter: Router = express.Router()
+const usersRouter = express.Router()
 
 usersRouter.post('/login', loginUser)
 usersRouter.post('/signup', signupUser)

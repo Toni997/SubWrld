@@ -15,8 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAdminRights = exports.passUserToRequest = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-const user_1 = __importDefault(require("../models/user"));
 const errorMiddleware_1 = require("./errorMiddleware");
+const user_1 = __importDefault(require("../models/user"));
 const authenticate = (0, express_async_handler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     if (!req.headers.authorization ||
         !req.headers.authorization.startsWith('Bearer')) {

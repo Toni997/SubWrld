@@ -1,4 +1,4 @@
-import express, { Router } from 'express'
+import express from 'express'
 import {
   authenticate,
   passUserToRequest,
@@ -28,20 +28,25 @@ import {
   getAllSubtitles,
 } from '../controllers/subtitles'
 import { validateBody } from '../middleware/bodyMiddleware'
-import { createSubtitleMulter, updateSubtitleMulter } from '../config/multer'
+import { subtitleMulter } from '../config/multer'
 import onlyMultipartDataAllowed from '../middleware/onlyMultipartDataAllowed'
 import { subtitleRequestValidator } from '../middleware/validators/subtitleRequestValidator'
 import { subtitleReportValidator } from '../middleware/validators/subtitleReportValidator'
+import {
+  createSubtitleValidator,
+  updateSubtitleValidator,
+} from '../middleware/validators/subtitleValidator'
 
-const subtitleRouter: Router = express.Router()
+const subtitleRouter = express.Router()
 
-subtitleRouter.get('', authenticate, getAllSubtitles)
+subtitleRouter.get('', getAllSubtitles)
 
 subtitleRouter.post(
   '',
   authenticate,
   onlyMultipartDataAllowed,
-  createSubtitleMulter.array('files', 5),
+  subtitleMulter.array('files', 5),
+  validateBody(createSubtitleValidator),
   addSubtitle
 )
 
@@ -49,7 +54,8 @@ subtitleRouter.put(
   '/:subtitleId',
   authenticate,
   onlyMultipartDataAllowed,
-  updateSubtitleMulter.array('files', 5),
+  subtitleMulter.array('files', 5),
+  validateBody(updateSubtitleValidator),
   updateSubtitle
 )
 

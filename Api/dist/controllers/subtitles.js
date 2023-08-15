@@ -38,9 +38,8 @@ const ensureAllowedMimeTypeForFiles = (files) => {
         magic.detectFile(filePath, function (err, result) {
             if (err)
                 throw new errorMiddleware_1.CustomError('Unsupported files', 415);
-            if (!multer_1.allowedMimeTypes.includes(result)) {
+            if (!multer_1.allowedMimeTypes.includes(result))
                 throw new errorMiddleware_1.CustomError('Unsupported files', 415);
-            }
         });
     }
 };
@@ -94,6 +93,7 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
     const episodeId = Number(req.params.episodeId);
     if (!episodeId)
         throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
+    console.log('callleeeed');
     const subtitles = yield subtitle_1.default.aggregate([
         {
             $match: { episodeId },
@@ -105,9 +105,6 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
                 foreignField: '_id',
                 as: 'user',
             },
-        },
-        {
-            $unwind: '$user',
         },
         {
             $addFields: {

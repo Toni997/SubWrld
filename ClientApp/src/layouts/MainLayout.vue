@@ -3,7 +3,7 @@
     <q-header elevated class="bg-primary text-white" height-hint="98">
       <q-toolbar>
         <q-btn
-          v-if="auth.isLoggedIn()"
+          v-if="auth.isLoggedIn"
           dense
           flat
           round
@@ -24,17 +24,13 @@
       <q-tabs align="left">
         <q-route-tab to="/" label="Home" />
         <q-route-tab to="/tv-shows" label="TV Shows" />
-        <q-route-tab
-          v-if="auth.isLoggedIn()"
-          to="/watchlist"
-          label="Watchlist"
-        />
-        <q-route-tab v-if="auth.isAdmin()" to="/reports" label="Reports" />
+        <q-route-tab v-if="auth.isLoggedIn" to="/watchlist" label="Watchlist" />
+        <q-route-tab v-if="auth.isAdmin" to="/reports" label="Reports" />
       </q-tabs>
     </q-header>
 
     <q-drawer
-      v-if="auth.isLoggedIn()"
+      v-if="auth.isLoggedIn"
       show-if-above
       v-model="leftDrawerOpen"
       side="left"
@@ -51,17 +47,17 @@
             <q-toggle size="lg" v-model="darkMode" ch label="Dark Mode" />
           </q-item-section>
         </q-item>
-        <q-item v-if="!auth.isLoggedIn()" clickable to="/login">
+        <q-item v-if="!auth.isLoggedIn" clickable to="/login">
           <q-item-section clickable>
             <q-item-label>Log In</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item v-if="!auth.isLoggedIn()" clickable to="/signup">
+        <q-item v-if="!auth.isLoggedIn" clickable to="/signup">
           <q-item-section>
             <q-item-label>Sign Up</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item v-if="auth.isLoggedIn()" clickable @click="logoutClick()">
+        <q-item v-if="auth.isLoggedIn" clickable @click="logoutClick()">
           <q-item-section>
             <q-item-label>Log Out</q-item-label>
           </q-item-section>

@@ -17,7 +17,6 @@ const subtitleReportSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Subtitle',
         required: true,
-        index: true,
     },
     reason: {
         type: String,
@@ -32,7 +31,6 @@ const subtitleReportSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
-subtitleReportSchema.index({ userId: 1, subtitleId: 1 });
 subtitleReportSchema.plugin(mongoose_paginate_v2_1.default);
 const SubtitleReport = (0, mongoose_1.model)('SubtitleReport', subtitleReportSchema);
 exports.default = SubtitleReport;

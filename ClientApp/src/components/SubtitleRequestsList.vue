@@ -58,7 +58,7 @@
         }}E{{ episode.details?.episode_number }})
       </p>
       <q-btn
-        v-if="auth.isLoggedIn()"
+        v-if="auth.isLoggedIn"
         label="Add Request"
         color="primary"
         @click="isRequestSubtitleDialogShown = true"
@@ -114,7 +114,7 @@
                 col.value
               }}</span>
               <span v-if="col.name === 'actions'">
-                <q-btn icon="more_horiz" flat round>
+                <q-btn icon="more_horiz" flat round v-if="auth.isLoggedIn">
                   <q-menu>
                     <q-list>
                       <q-item
@@ -146,7 +146,7 @@
                       <q-item
                         v-if="
                           auth.userInfo?._id === props.row.userId ||
-                          auth.isAdmin()
+                          auth.isAdmin
                         "
                         clickable
                         @click="deleteSubtitleRequestClick(props.row._id)"

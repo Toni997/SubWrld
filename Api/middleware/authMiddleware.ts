@@ -1,8 +1,9 @@
 import jwt, { JwtPayload } from 'jsonwebtoken'
 import asyncHandler from 'express-async-handler'
-import User, { IUser } from '../models/user'
+import { IUser } from '../interfaces/user'
 import { IAuthUserRequest } from '../interfaces/request'
 import { CustomError } from './errorMiddleware'
+import User from '../models/user'
 
 const authenticate = asyncHandler(async (req: IAuthUserRequest, res, next) => {
   if (

@@ -35,7 +35,6 @@ exports.addAnnouncement = addAnnouncement;
 const updateAnnouncement = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const announcementId = req.params.announcementId;
     const announcement = req.body;
-    console.log(announcementId);
     const existingAnnouncement = yield announcement_1.default.findById(announcementId);
     if (!existingAnnouncement)
         throw new errorMiddleware_1.CustomError('Announcement not found', 404);

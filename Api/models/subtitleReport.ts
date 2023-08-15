@@ -15,7 +15,6 @@ const subtitleReportSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'Subtitle',
       required: true,
-      index: true,
     },
     reason: {
       type: String,
@@ -32,8 +31,6 @@ const subtitleReportSchema = new Schema(
     timestamps: true,
   }
 )
-
-subtitleReportSchema.index({ userId: 1, subtitleId: 1 })
 
 subtitleReportSchema.plugin(paginate)
 

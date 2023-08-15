@@ -9,7 +9,6 @@ const morgan_1 = __importDefault(require("morgan"));
 const cors_1 = __importDefault(require("cors"));
 const errorMiddleware_1 = require("./middleware/errorMiddleware");
 const mongo_1 = __importDefault(require("./config/mongo"));
-const index_1 = __importDefault(require("./routes/index"));
 const users_1 = __importDefault(require("./routes/users"));
 const tv_shows_1 = __importDefault(require("./routes/tv-shows"));
 const subtitles_1 = __importDefault(require("./routes/subtitles"));
@@ -24,7 +23,6 @@ app.use((0, morgan_1.default)('dev'));
 app.use((0, cors_1.default)({
     origin: 'http://localhost:9000',
 }));
-app.use('/', index_1.default);
 app.use('/users', users_1.default);
 app.use('/tv-shows', tv_shows_1.default);
 app.use('/subtitles', subtitles_1.default);

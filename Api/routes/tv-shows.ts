@@ -1,4 +1,4 @@
-import express, { Router } from 'express'
+import express from 'express'
 import {
   popularTVShows,
   searchTVShows,
@@ -7,7 +7,7 @@ import {
 } from '../controllers/tv-shows'
 import { passUserToRequest } from '../middleware/authMiddleware'
 
-const tvShowRouter: Router = express.Router()
+const tvShowRouter = express.Router()
 
 tvShowRouter.get('/search', searchTVShows)
 tvShowRouter.get('/popular', popularTVShows)

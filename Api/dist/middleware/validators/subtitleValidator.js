@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateSubtitleValidator = exports.createSubtitleValidator = void 0;
 const countries_list_1 = require("countries-list");
-const joi_1 = __importDefault(require("@hapi/joi"));
+const joi_1 = __importDefault(require("joi"));
 const createSubtitleValidator = joi_1.default.object({
     tvShowId: joi_1.default.number().integer().positive().required(),
     season: joi_1.default.number().integer().min(0).required(),

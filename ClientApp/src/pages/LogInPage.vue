@@ -6,19 +6,17 @@
         <span class="text-negative">
           {{ errorMessage }}
         </span>
-        <q-form @submit.prevent="onLoginSubmit">
+        <q-form @submit="onLoginSubmit">
           <q-input
             v-model="username"
             type="text"
             label="Username"
-            lazy-rules
             :rules="required"
           />
           <q-input
             v-model="password"
             type="password"
             label="Password"
-            lazy-rules
             :rules="required"
           />
           <q-btn
@@ -42,11 +40,11 @@
 </style>
 
 <script lang="ts">
-import { ref } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { useAuthStore } from '../stores/auth-store'
 import { useQuasar } from 'quasar'
 
-export default {
+export default defineComponent({
   setup() {
     const auth = useAuthStore()
     const username = ref('')
@@ -74,5 +72,5 @@ export default {
       ],
     }
   },
-}
+})
 </script>

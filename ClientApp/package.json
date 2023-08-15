@@ -12,17 +12,14 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.0.0",
-    "@vee-validate/rules": "^4.10.1",
     "axios": "^0.21.1",
     "countries-list": "^2.6.1",
     "country-flag-emoji-polyfill": "^0.1.4",
-    "firebase": "^9.20.0",
     "jwt-decode": "^3.1.2",
     "moment": "^2.29.4",
     "pinia": "^2.0.11",
     "quasar": "^2.6.0",
     "truncate": "^3.0.0",
-    "vee-validate": "^4.10.1",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0"
   },

@@ -152,6 +152,8 @@ export default defineComponent({
       try {
         switch (status) {
           case ReportStatus.Pending:
+            approvedReports.value = null
+            rejectedReports.value = null
             if (pendingReports.value) pendingReports.value.docs = []
             page = pendingReports.value ? pendingReports.value.page + 1 : 1
             response = await api.get(
@@ -164,8 +166,9 @@ export default defineComponent({
             console.log(pendingReports.value)
             break
           case ReportStatus.Approved:
-            if (approvedReports.value) approvedReports.value.docs = []
-            page = pendingReports.value ? pendingReports.value.page + 1 : 1
+            pendingReports.value = null
+            rejectedReports.value = null
+            page = approvedReports.value ? approvedReports.value.page + 1 : 1
             response = await api.get(
               ApiEndpoints.getSubtitleReportsWithStatus(
                 ReportStatus[status],
@@ -175,8 +178,9 @@ export default defineComponent({
             approvedReports.value = response.data
             break
           case ReportStatus.Rejected:
-            if (rejectedReports.value) rejectedReports.value.docs = []
-            page = pendingReports.value ? pendingReports.value.page + 1 : 1
+            pendingReports.value = null
+            approvedReports.value = null
+            page = rejectedReports.value ? rejectedReports.value.page + 1 : 1
             response = await api.get(
               ApiEndpoints.getSubtitleReportsWithStatus(
                 ReportStatus[status],

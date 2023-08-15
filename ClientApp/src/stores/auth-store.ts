@@ -11,6 +11,10 @@ export const useAuthStore = defineStore({
     isSettingDarkMode: false,
     userInfo: null,
   }),
+  getters: {
+    isLoggedIn: (state) => !!state.userInfo,
+    isAdmin: (state) => state.userInfo?.isAdmin || false,
+  },
   actions: {
     async login(username: string, password: string): Promise<void> {
       this.isLoading = true
@@ -65,12 +69,6 @@ export const useAuthStore = defineStore({
       this.userInfo = null
       localStorage.removeItem('token')
       this.router.push('/login')
-    },
-    isLoggedIn() {
-      return !!this.userInfo
-    },
-    isAdmin() {
-      return this.userInfo?.isAdmin || false
     },
     async setDarkMode(darkMode: boolean): Promise<void> {
       this.isSettingDarkMode = true

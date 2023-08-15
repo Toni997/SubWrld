@@ -156,7 +156,6 @@ export default defineComponent({
     })
 
     watch(tab, async (newValue) => {
-      console.log(newValue)
       if (newValue === 'notifications') {
         await reloadNotifications()
       } else {

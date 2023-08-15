@@ -49,7 +49,7 @@
         }}E{{ episode.details?.episode_number }})
       </p>
       <q-btn
-        v-if="auth.isLoggedIn()"
+        v-if="auth.isLoggedIn"
         label="Add Subtitle"
         color="primary"
         @click="addClick"
@@ -160,14 +160,14 @@
                 </q-icon>
               </span>
               <span v-if="col.name === 'actions'">
-                <q-btn icon="more_horiz" flat round>
+                <q-btn icon="more_horiz" flat round v-if="auth.isLoggedIn">
                   <q-menu>
                     <q-list>
                       <q-item
                         v-if="
                           !props.row.isConfirmed &&
                           !props.row.isOwner &&
-                          !auth.isAdmin()
+                          !auth.isAdmin
                         "
                         clickable
                         @click="reportClick(props.row)"
@@ -179,7 +179,7 @@
                         v-if="
                           !props.row.isConfirmed &&
                           !props.row.isWorkInProgress &&
-                          auth.isAdmin()
+                          auth.isAdmin
                         "
                         clickable
                         @click="() => confirmClick(props.row)"
@@ -198,7 +198,7 @@
                       <q-item
                         v-if="
                           !props.row.isConfirmed &&
-                          (props.row.isOwner || auth.isAdmin())
+                          (props.row.isOwner || auth.isAdmin)
                         "
                         clickable
                         @click="editClick(props.row)"
@@ -207,7 +207,7 @@
                         <q-item-section>Edit</q-item-section>
                       </q-item>
                       <q-item
-                        v-if="props.row.isOwner || auth.isAdmin()"
+                        v-if="props.row.isOwner || auth.isAdmin"
                         clickable
                         @click="deleteSubtitleClick(props.row._id)"
                         v-close-popup
