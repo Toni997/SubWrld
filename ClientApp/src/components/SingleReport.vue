@@ -49,7 +49,12 @@
       <div>
         Uploader:
         <span>
-          <q-btn flat dense :to="`/users/${report.subtitleId.userId._id}`">
+          <q-btn
+            flat
+            no-caps
+            dense
+            :to="`/users/${report.subtitleId.userId._id}`"
+          >
             {{ report.subtitleId.userId.username }}
           </q-btn>
           <q-chip

@@ -176,10 +176,12 @@
           </q-tr>
           <q-tr v-show="columnExpanded[props.rowIndex]" :props="props">
             <q-td colspan="100%">
-              <div
-                class="text-left"
-                v-html="props.row.comment || '<i>No comment added</i>'"
-              ></div>
+              <div v-if="props.row.comment" class="text-left">
+                {{ props.row.comment }}
+              </div>
+              <div v-if="!props.row.comment" class="text-left">
+                <i>No comment added</i>
+              </div>
             </q-td>
           </q-tr>
         </template>

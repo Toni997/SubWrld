@@ -335,13 +335,12 @@
                   <q-separator />
                   <q-card>
                     <q-card-section>
-                      <p
-                        class="text-body1 q-my-sm"
-                        v-html="
-                          episode.overview ||
-                          '<i>Plot unknown at this moment</i>'
-                        "
-                      />
+                      <p v-if="episode.overview" class="text-body1 q-my-sm">
+                        {{ episode.overview }}
+                      </p>
+                      <p v-if="!episode.overview" class="text-body1 q-my-sm">
+                        <i>Plot unknown at this moment</i>
+                      </p>
                     </q-card-section>
                   </q-card>
                 </q-expansion-item>

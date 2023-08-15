@@ -6,7 +6,7 @@
         <span class="text-negative">
           {{ errorMessage }}
         </span>
-        <q-form @submit.prevent="onSignupSubmit">
+        <q-form @submit="onSignupSubmit">
           <q-input
             v-model="username"
             type="text"
