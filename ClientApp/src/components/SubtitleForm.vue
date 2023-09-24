@@ -61,7 +61,7 @@
           />
         </div>
         <q-file
-          :rules="[fileRequired]"
+          :rules="relatedRequestId ? [fileRequired] : []"
           class="q-mb-lg"
           filled
           multiple
@@ -210,9 +210,9 @@ export default defineComponent({
     const onSubmit = async () => {
       isLoading.value = true
       const formData = new FormData()
-      formData.append('tvShowId', String(state.tvShowId))
-      formData.append('season', String(state.season))
-      formData.append('episode', String(state.episode))
+      !subtitle.value && formData.append('tvShowId', String(state.tvShowId))
+      !subtitle.value && formData.append('season', String(state.season))
+      !subtitle.value && formData.append('episode', String(state.episode))
       formData.append('language', state.language?.actualValue as string)
       formData.append('frameRate', String(state.frameRate))
       formData.append('forHearingImpaired', String(state.forHearingImpaired))
@@ -220,7 +220,8 @@ export default defineComponent({
       formData.append('onlyForeignLanguage', String(state.onlyForeignLanguage))
       formData.append('uploaderIsAuthor', String(state.uploaderIsAuthor))
       formData.append('release', state.release as string)
-      if (relatedRequestId.value)
+      relatedRequestId.value &&
+        !subtitle.value &&
         formData.append('subtitleRequestId', relatedRequestId.value)
       state.files.forEach((file: File) => {
         formData.append('files', file)
@@ -248,7 +249,7 @@ export default defineComponent({
       } catch (error: any) {
         console.log('error', error)
         $q.notify({
-          message: error.response?.message || 'Failed to send request',
+          message: error.response?.data.message || 'Failed to send request',
           position: 'bottom',
           color: 'red',
           timeout: 3000,
@@ -297,8 +298,7 @@ export default defineComponent({
         /^[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$/.test(val) ||
         'Only letters, numbers, - and . (no consecutive - or . nor at the beginning or the end)',
       fileRequired: (files: any) =>
-        (files?.length && relatedRequestId.value !== undefined) ||
-        'Please attach at least one file',
+        files?.length || 'Please attach at least one file',
     }
   },
 })

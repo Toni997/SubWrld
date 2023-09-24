@@ -30,6 +30,7 @@ const subtitleReport_1 = __importDefault(require("../models/subtitleReport"));
 const subtitleRequest_1 = __importDefault(require("../models/subtitleRequest"));
 const user_1 = __importDefault(require("../models/user"));
 const subtitle_1 = __importDefault(require("../models/subtitle"));
+const notification_1 = __importDefault(require("../models/notification"));
 const pageSize = 10;
 const ensureAllowedMimeTypeForFiles = (files) => {
     const magic = new mmmagic_1.Magic(mmmagic_1.MAGIC_MIME_TYPE);
@@ -105,6 +106,9 @@ const getSubtitlesForEpisode = (0, express_async_handler_1.default)((req, res) =
                 foreignField: '_id',
                 as: 'user',
             },
+        },
+        {
+            $unwind: '$user',
         },
         {
             $addFields: {
@@ -289,6 +293,12 @@ const deleteSubtitle = (0, express_async_handler_1.default)((req, res) => __awai
         }
     }
     yield subtitle.deleteOne();
+    if (isAdmin) {
+        yield notification_1.default.create({
+            userId: subtitle.userId,
+            text: 'Your subtitle was deleted by an administrator',
+        });
+    }
     res.json('Removed subtitle');
 }));
 exports.deleteSubtitle = deleteSubtitle;
@@ -321,8 +331,9 @@ exports.downloadSubtitle = downloadSubtitle;
 // @route POST /subtitles/thanks/:subtitleId
 // @access Public
 const thankSubtitleUploader = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e;
+    var _e, _f;
     const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e._id;
+    const username = (_f = req.user) === null || _f === void 0 ? void 0 : _f.username;
     const subtitleId = req.params.subtitleId;
     const subtitle = yield subtitle_1.default.findById(subtitleId);
     if (!subtitle)
@@ -338,6 +349,10 @@ const thankSubtitleUploader = (0, express_async_handler_1.default)((req, res) =>
         uploader.reputation += 1;
         uploader.save();
     }
+    yield notification_1.default.create({
+        userId: subtitle.userId,
+        text: `User ${username} thanked you for your subtitle`,
+    });
     res.status(201).json('Success');
 }));
 exports.thankSubtitleUploader = thankSubtitleUploader;
@@ -360,6 +375,10 @@ const confirmSubtitle = (0, express_async_handler_1.default)((req, res) => __awa
         uploader.reputation += 50;
         uploader.save();
     }
+    yield notification_1.default.create({
+        userId: subtitle.userId,
+        text: `Your subtitle was confirmed`,
+    });
     res.json('Success');
 }));
 exports.confirmSubtitle = confirmSubtitle;
@@ -367,8 +386,8 @@ exports.confirmSubtitle = confirmSubtitle;
 // @route PATCH /subtitles/confirm/:subtitleId
 // @access Admin
 const fulfillRequestWithExistingSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f;
-    const userId = (_f = req.user) === null || _f === void 0 ? void 0 : _f._id;
+    var _g;
+    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
     const requestId = req.params.requestId;
     const subtitleId = req.params.subtitleId;
     const request = yield subtitleRequest_1.default.findById(requestId);
@@ -387,6 +406,10 @@ const fulfillRequestWithExistingSubtitle = (0, express_async_handler_1.default)(
     yield request.save();
     subtitle.subtitleRequestId = request._id;
     yield subtitle.save();
+    yield notification_1.default.create({
+        userId: request.userId,
+        text: `Your request was fulfilled`,
+    });
     res.json('Success');
 }));
 exports.fulfillRequestWithExistingSubtitle = fulfillRequestWithExistingSubtitle;
@@ -474,8 +497,8 @@ exports.getRejectedSubtitleReports = getRejectedSubtitleReports;
 // @route PATCH /subtitles/report/:subtitleId
 // @access Private
 const reportSubtitle = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g;
-    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g._id;
+    var _h;
+    const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h._id;
     const subtitleId = req.params.subtitleId;
     const report = req.body;
     const subtitle = yield subtitle_1.default.findById(subtitleId).populate('userId');
@@ -498,6 +521,10 @@ const reportSubtitle = (0, express_async_handler_1.default)((req, res) => __awai
         userId,
         subtitleId,
         reason: report.reason,
+    });
+    yield notification_1.default.create({
+        userId: subtitle.userId,
+        text: `Your subtitle was reported. We will notice you of the outcome.`,
     });
     res.status(201).json(insertedReport);
 }));
@@ -522,6 +549,10 @@ const approveSubtitleReport = (0, express_async_handler_1.default)((req, res) =>
             }
         }
         yield subtitle.deleteOne();
+        yield notification_1.default.create({
+            userId: subtitle.userId,
+            text: `Your subtitle was deleted after reviewing a sent report`,
+        });
     }
     report.status = reportStatus_1.ReportStatus.Approved;
     yield report.save();
@@ -540,6 +571,13 @@ const rejectSubtitleReport = (0, express_async_handler_1.default)((req, res) => 
         throw new errorMiddleware_1.CustomError('This report has already been handled', 409);
     report.status = reportStatus_1.ReportStatus.Rejected;
     yield report.save();
+    const subtitle = yield subtitleReport_1.default.findById(report.subtitleId);
+    if (subtitle) {
+        yield notification_1.default.create({
+            userId: subtitle.userId,
+            text: `The report sent for your subtitle was rejected`,
+        });
+    }
     res.json('Report rejected');
 }));
 exports.rejectSubtitleReport = rejectSubtitleReport;
@@ -547,14 +585,14 @@ exports.rejectSubtitleReport = rejectSubtitleReport;
 // @route POST /subtitles/requests
 // @access Public
 const addSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h;
+    var _j;
     const user = req.user;
     const subtitleRequest = req.body;
     const response = yield axios_1.default.get((0, tmdb_api_1.getTVShowEpisodeDetailsUrl)(subtitleRequest.tvShowId, subtitleRequest.season, subtitleRequest.episode));
     const episodeDetails = response.data;
     subtitleRequest.userId = user._id;
     subtitleRequest.episodeId = episodeDetails.id;
-    subtitleRequest.comment = ((_h = subtitleRequest.comment) === null || _h === void 0 ? void 0 : _h.trim()) || null;
+    subtitleRequest.comment = ((_j = subtitleRequest.comment) === null || _j === void 0 ? void 0 : _j.trim()) || null;
     const insertedSubtitleRequest = yield subtitleRequest_1.default.create(subtitleRequest);
     res.status(201).json(insertedSubtitleRequest);
 }));
@@ -563,8 +601,8 @@ exports.addSubtitleRequest = addSubtitleRequest;
 // @route GET /subtitles/requests/:episodeId
 // @access Public
 const getSubtitleRequestsForEpisode = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _j;
-    const userId = (_j = req.user) === null || _j === void 0 ? void 0 : _j._id;
+    var _k;
+    const userId = (_k = req.user) === null || _k === void 0 ? void 0 : _k._id;
     const episodeId = Number(req.params.episodeId);
     if (!episodeId)
         throw new errorMiddleware_1.CustomError('Invalid parameter', 400);
@@ -665,8 +703,8 @@ exports.getSubtitleRequestsForEpisode = getSubtitleRequestsForEpisode;
 // @route PATCH /subtitles/requests/reopen/:requestId
 // @access Private
 const reopenSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _k;
-    const userId = (_k = req.user) === null || _k === void 0 ? void 0 : _k._id;
+    var _l;
+    const userId = (_l = req.user) === null || _l === void 0 ? void 0 : _l._id;
     const requestId = req.params.requestId;
     const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
     if (!subtitleRequest)
@@ -689,9 +727,9 @@ exports.reopenSubtitleRequest = reopenSubtitleRequest;
 // @route DELETE /subtitles/requests/:requestId
 // @access Private
 const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _l, _m;
-    const userId = (_l = req.user) === null || _l === void 0 ? void 0 : _l._id;
-    const isAdmin = (_m = req.user) === null || _m === void 0 ? void 0 : _m.isAdmin;
+    var _m, _o;
+    const userId = (_m = req.user) === null || _m === void 0 ? void 0 : _m._id;
+    const isAdmin = (_o = req.user) === null || _o === void 0 ? void 0 : _o.isAdmin;
     const requestId = req.params.requestId;
     const subtitleRequest = yield subtitleRequest_1.default.findById(requestId);
     if (!subtitleRequest)
@@ -706,6 +744,12 @@ const deleteSubtitleRequest = (0, express_async_handler_1.default)((req, res) =>
         }
     }
     yield subtitleRequest.deleteOne();
+    if (isAdmin) {
+        yield notification_1.default.create({
+            userId: subtitleRequest.userId,
+            text: `Your subtitle request was deleted by an administrator`,
+        });
+    }
     res.json('Removed subtitle request');
 }));
 exports.deleteSubtitleRequest = deleteSubtitleRequest;

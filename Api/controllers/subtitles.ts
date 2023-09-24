@@ -35,6 +35,7 @@ import SubtitleRequest from '../models/subtitleRequest'
 import User from '../models/user'
 import { ISubtitleWithTVShowTitle } from '../interfaces/subtitle'
 import Subtitle from '../models/subtitle'
+import Notification from '../models/notification'
 
 const pageSize = 10
 
@@ -124,6 +125,9 @@ const getSubtitlesForEpisode = asyncHandler(
           foreignField: '_id',
           as: 'user',
         },
+      },
+      {
+        $unwind: '$user',
       },
       {
         $addFields: {
@@ -374,6 +378,13 @@ const deleteSubtitle = asyncHandler(
     }
     await subtitle.deleteOne()
 
+    if (isAdmin) {
+      await Notification.create({
+        userId: subtitle.userId,
+        text: 'Your subtitle was deleted by an administrator',
+      })
+    }
+
     res.json('Removed subtitle')
   }
 )
@@ -413,6 +424,7 @@ const downloadSubtitle = asyncHandler(async (req: Request, res: Response) => {
 const thankSubtitleUploader = asyncHandler(
   async (req: IAuthUserRequest, res: Response) => {
     const userId = req.user?._id as mongoose.Types.ObjectId
+    const username = req.user?.username as string
     const subtitleId = req.params.subtitleId
     const subtitle = await Subtitle.findById(subtitleId)
 
@@ -432,6 +444,11 @@ const thankSubtitleUploader = asyncHandler(
       uploader.reputation += 1
       uploader.save()
     }
+
+    await Notification.create({
+      userId: subtitle.userId,
+      text: `User ${username} thanked you for your subtitle`,
+    })
 
     res.status(201).json('Success')
   }
@@ -464,6 +481,11 @@ const confirmSubtitle = asyncHandler(
       uploader.reputation += 50
       uploader.save()
     }
+
+    await Notification.create({
+      userId: subtitle.userId,
+      text: `Your subtitle was confirmed`,
+    })
 
     res.json('Success')
   }
@@ -501,6 +523,11 @@ const fulfillRequestWithExistingSubtitle = asyncHandler(
 
     subtitle.subtitleRequestId = request._id
     await subtitle.save()
+
+    await Notification.create({
+      userId: request.userId,
+      text: `Your request was fulfilled`,
+    })
 
     res.json('Success')
   }
@@ -656,6 +683,11 @@ const reportSubtitle = asyncHandler(
       reason: report.reason,
     })
 
+    await Notification.create({
+      userId: subtitle.userId,
+      text: `Your subtitle was reported. We will notice you of the outcome.`,
+    })
+
     res.status(201).json(insertedReport)
   }
 )
@@ -686,6 +718,11 @@ const approveSubtitleReport = asyncHandler(
         }
       }
       await subtitle.deleteOne()
+
+      await Notification.create({
+        userId: subtitle.userId,
+        text: `Your subtitle was deleted after reviewing a sent report`,
+      })
     }
 
     report.status = ReportStatus.Approved
@@ -711,6 +748,14 @@ const rejectSubtitleReport = asyncHandler(
 
     report.status = ReportStatus.Rejected
     await report.save()
+
+    const subtitle = await SubtitleReport.findById(report.subtitleId)
+    if (subtitle) {
+      await Notification.create({
+        userId: subtitle.userId,
+        text: `The report sent for your subtitle was rejected`,
+      })
+    }
 
     res.json('Report rejected')
   }
@@ -909,6 +954,13 @@ const deleteSubtitleRequest = asyncHandler(
     }
 
     await subtitleRequest.deleteOne()
+
+    if (isAdmin) {
+      await Notification.create({
+        userId: subtitleRequest.userId,
+        text: `Your subtitle request was deleted by an administrator`,
+      })
+    }
 
     res.json('Removed subtitle request')
   }

@@ -201,7 +201,7 @@ export default defineComponent({
           notifications.value = data
         }
       } catch (err: any) {
-        notificationsError.value = 'Failed to fetch subtitles.'
+        notificationsError.value = 'Failed to fetch notifications.'
       } finally {
         isLoadingNotifications.value = false
       }
